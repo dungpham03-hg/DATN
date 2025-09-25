@@ -1,24 +1,29 @@
 import React from 'react';
-import Toast from './Toast';
-import './ToastContainer.css';
+import { Snackbar, Alert } from '@mui/material';
 
 const ToastContainer = ({ toasts, removeToast }) => {
-  if (!toasts || toasts.length === 0) return null;
-
   return (
-    <div className="toast-container">
-      {toasts.map(toast => (
-        <Toast
+    <>
+      {toasts.map((toast) => (
+        <Snackbar
           key={toast.id}
-          id={toast.id}
-          type={toast.type}
-          message={toast.message}
-          duration={toast.duration}
-          onRemove={removeToast}
-        />
+          open={true}
+          autoHideDuration={toast.duration || 4000}
+          onClose={() => removeToast(toast.id)}
+          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        >
+          <Alert
+            onClose={() => removeToast(toast.id)}
+            severity={toast.type}
+            variant="filled"
+            sx={{ width: '100%' }}
+          >
+            {toast.message}
+          </Alert>
+        </Snackbar>
       ))}
-    </div>
+    </>
   );
 };
 
-export default ToastContainer; 
+export default ToastContainer;

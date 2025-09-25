@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   Container,
   Paper,
@@ -8,38 +8,76 @@ import {
   Typography,
   Box,
   Alert,
-  Link,
-  Divider,
   Stack,
   IconButton,
-  InputAdornment
+  InputAdornment,
+  Divider,
+  CircularProgress,
+  useTheme,
+  alpha
 } from '@mui/material';
-import GitHubIcon from '@mui/icons-material/GitHub';
-import { GoogleLogin } from '@react-oauth/google';
+import {
+  Email as EmailIcon,
+  Lock as LockIcon,
+  Visibility,
+  VisibilityOff,
+  Login as LoginIcon,
+  GitHub as GitHubIcon
+} from '@mui/icons-material';
+
 import { useAuth } from '../../contexts/AuthContext';
-import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 const Login = () => {
+  const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
+  
+  const [formData, setFormData] = useState({
+    email: '',
+    password: ''
+  });
   const [error, setError] = useState(location.state?.error || '');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    
+    // Clear error when user starts typing
+    if (error) {
+      setError('');
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const email = formData.get('email');
-    const password = formData.get('password');
+    
+    if (!formData.email || !formData.password) {
+      setError('Vui lòng nhập đầy đủ email và mật khẩu');
+      return;
+    }
 
     try {
       setError('');
       setLoading(true);
-      await login(email, password);
-      navigate('/');
+      
+      await login(formData.email.trim(), formData.password);
+      navigate('/dashboard', { replace: true });
     } catch (err) {
-      setError(err.response?.data?.message || 'Đăng nhập thất bại');
+      console.error('Login error:', err);
+      setError(err.response?.data?.message || err.message || 'Đăng nhập thất bại');
     } finally {
       setLoading(false);
     }
@@ -50,221 +88,225 @@ const Login = () => {
     window.location.href = `${apiUrl}/auth/${provider}`;
   };
 
+
+
   return (
     <Box
       sx={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        p: 2,
+        p: 2
       }}
     >
-      <Container maxWidth="sm" sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      {/* Tiêu đề tên ứng dụng */}
-        <Typography variant="h4" fontWeight="bold" color="white" gutterBottom>
-        Quản lý cuộc họp
-      </Typography>
+      <Container maxWidth="sm">
+        <Box sx={{ textAlign: 'center', mb: 4 }}>
+          <Typography variant="h3" fontWeight="bold" color="white" gutterBottom>
+            Meeting Manager
+          </Typography>
+          <Typography variant="h6" color="white" sx={{ opacity: 0.9 }}>
+            Hệ thống quản lý cuộc họp chuyên nghiệp
+          </Typography>
+        </Box>
 
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          width: '100%',
-        }}
-      >
         <Paper
-            elevation={10}
+          elevation={10}
           sx={{
-              px: 5,
-              py: 6,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            width: '100%',
-              borderRadius: 4,
-              backdropFilter: 'blur(10px)',
-              backgroundColor: 'rgba(255,255,255,0.85)'
+            p: 4,
+            borderRadius: 3,
+            backdropFilter: 'blur(10px)',
+            backgroundColor: alpha(theme.palette.background.paper, 0.95)
           }}
         >
-          <Typography component="h1" variant="h5" gutterBottom>
-            Đăng nhập
-          </Typography>
+          <Box sx={{ mb: 3, textAlign: 'center' }}>
+            <LoginIcon sx={{ fontSize: 48, color: theme.palette.primary.main, mb: 1 }} />
+            <Typography variant="h4" fontWeight={600} gutterBottom>
+              Đăng nhập
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Chào mừng bạn trở lại! Vui lòng đăng nhập để tiếp tục.
+            </Typography>
+          </Box>
 
           {error && (
-            <Alert severity="error" sx={{ width: '100%', mb: 2 }}>
+            <Alert severity="error" sx={{ mb: 3 }}>
               {error}
             </Alert>
           )}
 
-          <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              id="email"
-              label="Email"
-              name="email"
-              autoComplete="email"
-              autoFocus
-            />
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              name="password"
-              label="Mật khẩu"
-                type={showPassword ? 'text' : 'password'}
-              id="password"
-              autoComplete="current-password"
+          <Box component="form" onSubmit={handleSubmit}>
+            <Stack spacing={3}>
+              <TextField
+                fullWidth
+                label="Email"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleChange}
+                autoComplete="email"
+                autoFocus
                 InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <EmailIcon color="action" />
+                    </InputAdornment>
+                  )
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2
+                  }
+                }}
+              />
+
+              <TextField
+                fullWidth
+                label="Mật khẩu"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                value={formData.password}
+                onChange={handleChange}
+                autoComplete="current-password"
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <LockIcon color="action" />
+                    </InputAdornment>
+                  ),
                   endAdornment: (
                     <InputAdornment position="end">
                       <IconButton
                         onClick={() => setShowPassword(!showPassword)}
                         edge="end"
                         aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-                        sx={{ color: 'text.secondary' }}
-                        disableRipple
-                        size="small"
                       >
-                        {showPassword ? <FaEyeSlash /> : <FaEye />}
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
                       </IconButton>
                     </InputAdornment>
-                  ),
+                  )
                 }}
-            />
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              sx={{ mt: 3 }}
-              disabled={loading}
-            >
-              {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
-            </Button>
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2
+                  }
+                }}
+              />
+
+              <Button
+                type="submit"
+                fullWidth
+                variant="contained"
+                size="large"
+                disabled={loading}
+                sx={{
+                  borderRadius: 2,
+                  py: 1.5,
+                  fontSize: '1.1rem',
+                  fontWeight: 600,
+                  textTransform: 'none'
+                }}
+              >
+                {loading ? (
+                  <>
+                    <CircularProgress size={24} color="inherit" sx={{ mr: 1 }} />
+                    Đang đăng nhập...
+                  </>
+                ) : (
+                  'Đăng nhập'
+                )}
+              </Button>
+            </Stack>
           </Box>
 
-          <Stack spacing={2} width="100%" mt={3} alignItems="center">
+          {/* OAuth Section */}
+          <Stack spacing={2} sx={{ mt: 4 }}>
             <Divider>
               <Typography variant="body2" color="text.secondary">
                 Hoặc đăng nhập với
               </Typography>
             </Divider>
             
-            {/* OAuth Buttons với thiết kế cải thiện */}
-            <Box 
-              sx={{ 
-                display: 'flex', 
-                gap: 3,
-                justifyContent: 'center',
-                alignItems: 'center'
-              }}
-            >
+            <Stack spacing={2}>
               {/* Google Login Button */}
-              <Box 
-                sx={{ 
-                  width: 48,
-                  height: 48,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  position: 'relative'
-                }}
-              >
-                <GoogleLogin
-                  type="icon"
-                  shape="circle"
-                  theme="outline"
-                  size="large"
-                  onSuccess={async (credentialResponse) => {
-                    try {
-                      const { credential } = credentialResponse;
-                      if (!credential) throw new Error('Không nhận được credential');
-
-                      setLoading(true);
-                      // Gửi credential sang backend để đổi JWT nội bộ
-                      const apiUrl = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
-                      const res = await fetch(`${apiUrl}/auth/google-token`, {
-                        method: 'POST',
-                        headers: {
-                          'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ credential })
-                      });
-                      if (!res.ok) {
-                        const errData = await res.json();
-                        throw new Error(errData.message || 'Xác thực Google thất bại');
-                      }
-                      const data = await res.json();
-
-                      await login(data.token, undefined, data.user);
-                      navigate('/dashboard');
-                    } catch (err) {
-                      console.error(err);
-                      setError(err.message);
-                    } finally {
-                      setLoading(false);
-                    }
-                  }}
-                  onError={() => setError('Đăng nhập Google thất bại')}
-                />
-              </Box>
-
-              {/* GitHub Login Button */}
-              <IconButton
-                onClick={() => handleOAuthLogin('github')}
+              <Button
+                fullWidth
+                variant="outlined"
+                size="large"
+                startIcon={
+                  <Box
+                    component="img"
+                    src="https://developers.google.com/identity/images/g-logo.png"
+                    alt="Google"
+                    sx={{ width: 20, height: 20 }}
+                  />
+                }
+                onClick={() => handleOAuthLogin('google')}
                 sx={{
-                  width: 44,
-                  height: 44,
-                  border: '2px solid #24292e',
-                  borderRadius: '50%',
-                  color: '#24292e',
-                  backgroundColor: 'white',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                  transition: 'all 0.3s ease',
+                  borderRadius: 2,
+                  py: 1.5,
+                  textTransform: 'none',
+                  borderColor: theme.palette.grey[300],
+                  color: theme.palette.text.primary,
                   '&:hover': {
-                    backgroundColor: '#24292e',
-                    color: 'white',
-                    transform: 'translateY(-2px)',
-                    boxShadow: '0 4px 16px rgba(36, 41, 46, 0.3)',
-                    borderColor: '#24292e'
-                  },
-                  '&:active': {
-                    transform: 'translateY(0px)',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                    backgroundColor: '#4285f4',
+                    borderColor: '#4285f4',
+                    color: 'white'
                   }
                 }}
               >
-                <GitHubIcon sx={{ fontSize: 24 }} />
-              </IconButton>
-            </Box>
+                Đăng nhập với Google
+              </Button>
 
-            {/* Thêm text mô tả cho các nút */}
-            <Typography 
-              variant="caption" 
-              color="text.secondary" 
-              sx={{ 
-                textAlign: 'center',
-                mt: 1,
-                fontSize: '0.75rem'
-              }}
-            >
-            </Typography>
+              {/* GitHub Login Button */}
+              <Button
+                fullWidth
+                variant="outlined"
+                size="large"
+                startIcon={<GitHubIcon />}
+                onClick={() => handleOAuthLogin('github')}
+                sx={{
+                  borderRadius: 2,
+                  py: 1.5,
+                  textTransform: 'none',
+                  borderColor: theme.palette.grey[300],
+                  color: theme.palette.text.primary,
+                  '&:hover': {
+                    backgroundColor: '#24292e',
+                    borderColor: '#24292e',
+                    color: 'white'
+                  }
+                }}
+              >
+                Đăng nhập với GitHub
+              </Button>
+            </Stack>
           </Stack>
 
-          <Box sx={{ mt: 2 }}>
-            <Link href="/register" variant="body2">
-              {"Chưa có tài khoản? Đăng ký"}
-            </Link>
+          <Divider sx={{ my: 3 }} />
+
+          <Box sx={{ textAlign: 'center' }}>
+            <Typography variant="body2" color="text.secondary">
+              Chưa có tài khoản?{' '}
+              <Link 
+                to="/register"
+                style={{ 
+                  color: theme.palette.primary.main,
+                  textDecoration: 'none',
+                  fontWeight: 500
+                }}
+              >
+                Đăng ký ngay
+              </Link>
+            </Typography>
           </Box>
+
+
         </Paper>
-      </Box>
-    </Container>
+      </Container>
     </Box>
   );
 };
 
-export default Login; 
+export default Login;

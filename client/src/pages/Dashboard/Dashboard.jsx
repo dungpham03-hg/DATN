@@ -1,0 +1,869 @@
+import React, { useEffect, useState } from 'react';
+import {
+  Container,
+  Grid,
+  Card,
+  CardContent,
+  Typography,
+  Box,
+  Button,
+  Chip,
+  Avatar,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
+  ListItemSecondaryAction,
+  IconButton,
+  Paper,
+  Skeleton,
+  Stack,
+  Divider,
+  Alert,
+  AlertTitle,
+  Tooltip,
+  LinearProgress,
+  useTheme,
+  alpha,
+  Badge
+} from '@mui/material';
+import {
+  CalendarMonth as CalendarIcon,
+  Groups as GroupsIcon,
+  Schedule as ScheduleIcon,
+  CheckCircle as CheckCircleIcon,
+  Add as AddIcon,
+  ArrowForward as ArrowForwardIcon,
+  LocationOn as LocationIcon,
+  Assignment as AssignmentIcon,
+  Mail as MailIcon,
+  AccessTime as AccessTimeIcon,
+  EventAvailable as EventAvailableIcon,
+  EventBusy as EventBusyIcon,
+  Event as EventIcon,
+  TrendingUp as TrendingUpIcon,
+  Pending as PendingIcon,
+  Description as DescriptionIcon,
+  Person as PersonIcon} from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
+import axios from 'axios';
+import { ProtocolList } from '../../components/Protocols';
+import { getMeetingStatus } from '../../utils/dateUtils';
+import QuickActions from '../../components/ui/quick-actions';
+
+const Dashboard = () => {
+  const theme = useTheme();
+  const { user, token, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const [stats, setStats] = useState({
+    today: 0,
+    upcoming: 0,
+    completed: 0,
+    total: 0
+  });
+  const [recentMeetings, setRecentMeetings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [pendingProtocols, setPendingProtocols] = useState([]);
+  const [pendingInvitations, setPendingInvitations] = useState([]);
+
+  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
+
+  useEffect(() => {
+    if (user && token) {
+      fetchDashboardData();
+    }
+  }, [user, token]);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch meetings data
+      const meetingsResponse = await axios.get(`${API_BASE_URL}/meetings`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const meetings = meetingsResponse.data.meetings || [];
+      
+      // Fetch pending protocols
+      const protRes = await axios.get(`${API_BASE_URL}/protocols?status=pending`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPendingProtocols(protRes.data.protocols || []);
+
+      // Fetch pending invitations
+      try {
+        const invitationsRes = await axios.get(`${API_BASE_URL}/meetings/invitations`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setPendingInvitations(invitationsRes.data.invitations || []);
+      } catch (error) {
+        setPendingInvitations([]);
+      }
+      
+      // Calculate stats
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      
+      const todayMeetings = meetings.filter(meeting => {
+        const meetingDate = new Date(meeting.startTime);
+        return meetingDate >= today && meetingDate < tomorrow;
+      });
+      
+      const upcomingMeetings = meetings.filter(meeting => {
+        const meetingDate = new Date(meeting.startTime);
+        return meetingDate > now;
+      });
+      
+      const completedMeetings = meetings.filter(meeting => {
+        const meetingDate = new Date(meeting.startTime);
+        return meetingDate < now;
+      });
+      
+      setStats({
+        today: todayMeetings.length,
+        upcoming: upcomingMeetings.length,
+        completed: completedMeetings.length,
+        total: meetings.length
+      });
+      
+      // Get recent meetings
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
+      const recent = meetings
+        .filter(meeting => {
+          const meetingDate = new Date(meeting.startTime);
+          return meetingDate >= sevenDaysAgo;
+        })
+        .sort((a, b) => new Date(b.startTime) - new Date(a.startTime))
+        .slice(0, 5);
+      
+      // Debug: Check room data in recent meetings
+      console.log('🔍 Dashboard - Recent meetings room data:', recent.map(meeting => ({
+        id: meeting._id,
+        title: meeting.title,
+        room: meeting.room,
+        location: meeting.location,
+        hasRoom: !!meeting.room,
+        roomName: meeting.room?.name
+      })));
+      
+      setRecentMeetings(recent);
+      
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStatCardClick = (type) => {
+    const routes = {
+      today: '/meetings?filter=today',
+      upcoming: '/meetings?filter=upcoming',
+      completed: '/meetings?filter=completed',
+      total: '/meetings'
+    };
+    navigate(routes[type] || '/meetings');
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+  const formatTime = (dateString) => {
+    return new Date(dateString).toLocaleTimeString('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const getStatusColor = (status) => {
+    const colors = {
+      ongoing: 'success',
+      upcoming: 'info',
+      completed: 'default',
+      cancelled: 'error'
+    };
+    return colors[status] || 'default';
+  };
+
+  const getStatusLabel = (status) => {
+    const labels = {
+      ongoing: 'Đang diễn ra',
+      upcoming: 'Sắp diễn ra',
+      completed: 'Đã kết thúc',
+      cancelled: 'Đã hủy'
+    };
+    return labels[status] || status;
+  };
+
+  const statsCards = [
+    {
+      title: 'Hôm nay',
+      value: stats.today,
+      icon: <EventAvailableIcon />,
+      color: theme.palette.success.main,
+      bgColor: alpha(theme.palette.success.main, 0.1),
+      type: 'today'
+    },
+    {
+      title: 'Sắp tới',
+      value: stats.upcoming,
+      icon: <EventIcon />,
+      color: theme.palette.info.main,
+      bgColor: alpha(theme.palette.info.main, 0.1),
+      type: 'upcoming'
+    },
+    {
+      title: 'Đã hoàn thành',
+      value: stats.completed,
+      icon: <CheckCircleIcon />,
+      color: theme.palette.primary.main,
+      bgColor: alpha(theme.palette.primary.main, 0.1),
+      type: 'completed'
+    },
+    {
+      title: 'Tổng cộng',
+      value: stats.total,
+      icon: <CalendarIcon />,
+      color: theme.palette.warning.main,
+      bgColor: alpha(theme.palette.warning.main, 0.1),
+      type: 'total'
+    }
+  ];
+
+  // Loading state
+  if (authLoading || loading) {
+    return (
+      <Container maxWidth="xl">
+        <Box sx={{ py: 3 }}>
+          <Grid container spacing={3}>
+            {[1, 2, 3, 4].map((item) => (
+              <Grid item xs={12} sm={6} md={3} key={item}>
+                <Card sx={{ height: 120 }}>
+                  <CardContent>
+                    <Skeleton variant="text" width="60%" />
+                    <Skeleton variant="text" width="40%" height={40} />
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+            <Grid item xs={12} md={8}>
+              <Card>
+                <CardContent>
+                  <Skeleton variant="text" width="40%" height={30} />
+                  <Skeleton variant="rectangular" height={200} sx={{ mt: 2 }} />
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Card>
+                <CardContent>
+                  <Skeleton variant="text" width="60%" height={30} />
+                  <Skeleton variant="rectangular" height={200} sx={{ mt: 2 }} />
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+        </Box>
+      </Container>
+    );
+  }
+
+  return (
+    <Container maxWidth="xl">
+      <Box sx={{ py: 3 }}>
+        {/* Header */}
+        <Paper 
+          elevation={0}
+          className="slide-in-up"
+          sx={{ 
+            mb: 4, 
+            p: 4,
+            background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+            color: 'white',
+            position: 'relative',
+            overflow: 'hidden',
+            borderRadius: 4,
+            boxShadow: '0 10px 25px -5px rgba(59, 130, 246, 0.15)',
+            '&:hover': {
+              transform: 'translateY(-2px)',
+              boxShadow: '0 15px 35px -5px rgba(59, 130, 246, 0.2)',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+            }
+          }}
+        >
+          {/* Background decoration */}
+          <Box 
+            className="float"
+            sx={{
+              position: 'absolute',
+              top: -50,
+              right: -50,
+              width: 200,
+              height: 200,
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 70%, transparent 100%)',
+              zIndex: 0
+            }} 
+          />
+          <Box 
+            className="float"
+            sx={{
+              position: 'absolute',
+              bottom: -30,
+              left: -30,
+              width: 150,
+              height: 150,
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.03) 70%, transparent 100%)',
+              zIndex: 0,
+              animationDelay: '1s'
+            }} 
+          />
+          <Box 
+            className="pulse"
+            sx={{
+              position: 'absolute',
+              top: '20%',
+              left: '10%',
+              width: 80,
+              height: 80,
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%)',
+              zIndex: 0,
+              animationDelay: '2s'
+            }} 
+          />
+          
+          <Box sx={{ position: 'relative', zIndex: 1 }}>
+            <Grid container alignItems="center" spacing={3}>
+              <Grid item xs={12} md={8}>
+                <Typography variant="h4" fontWeight={700} gutterBottom sx={{ color: 'white' }}>
+                  Chào mừng trở lại, {user?.fullName?.split(' ').pop() || 'Người dùng'}! 
+                </Typography>
+                <Typography variant="h6" sx={{ opacity: 0.9, fontWeight: 400 }}>
+                  {new Date().toLocaleDateString('vi-VN', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  })}
+                </Typography>
+                <Typography variant="body2" sx={{ opacity: 0.8, mt: 1 }}>
+                  Quản lý cuộc họp hiệu quả với Meeting Manager
+                </Typography>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <Box sx={{ display: 'flex', justifyContent: { xs: 'flex-start', md: 'flex-end' }, gap: 1 }}>
+                  {(user?.role === 'admin' || user?.role === 'manager') && (
+                    <Button
+                      variant="outlined"
+                      size="large"
+                      startIcon={<TrendingUpIcon />}
+                      onClick={() => navigate('/reports')}
+                      sx={{
+                        color: 'white',
+                        borderColor: 'rgba(255,255,255,0.4)'
+                      }}
+                    >
+                      Báo cáo thống kê
+                    </Button>
+                  )}
+                  <Button
+                    variant="contained"
+                    size="large"
+                    startIcon={<AddIcon />}
+                    onClick={() => navigate('/meetings/create')}
+                    disabled={!['admin', 'manager', 'secretary', 'assistant'].includes(user?.role)}
+                    sx={{
+                      bgcolor: 'rgba(255,255,255,0.2)',
+                      color: 'white',
+                      backdropFilter: 'blur(10px)',
+                      border: '1px solid rgba(255,255,255,0.3)',
+                      fontWeight: 600,
+                      px: 3,
+                      py: 1.5,
+                      '&:hover': {
+                        bgcolor: 'rgba(255,255,255,0.3)',
+                        transform: 'translateY(-2px)',
+                        boxShadow: theme.shadows[8]
+                      },
+                      '&:disabled': {
+                        bgcolor: 'rgba(255,255,255,0.1)',
+                        color: 'rgba(255,255,255,0.5)'
+                      }
+                    }}
+                  >
+                    Tạo cuộc họp mới
+                  </Button>
+                </Box>
+              </Grid>
+            </Grid>
+          </Box>
+        </Paper>
+
+        {/* Stats Cards */}
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          {statsCards.map((card, index) => (
+            <Grid item xs={12} sm={6} md={3} key={card.type}>
+              <Card 
+                elevation={0}
+                className="slide-in-up"
+                sx={{ 
+                  cursor: 'pointer',
+                  transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                  border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                  borderRadius: 4,
+                  position: 'relative',
+                  overflow: 'hidden',
+                  background: 'rgba(255, 255, 255, 0.9)',
+                  backdropFilter: 'blur(10px)',
+                  animationDelay: `${index * 100}ms`,
+                  '&:hover': {
+                    transform: 'translateY(-4px) scale(1.01)',
+                    boxShadow: `0 10px 25px -5px ${alpha(card.color, 0.15)}, 0 0 0 1px ${alpha(card.color, 0.08)}`,
+                    borderColor: card.color,
+                    '& .stat-icon': {
+                      transform: 'scale(1.05) rotate(2deg)',
+                      filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
+                    },
+                    '& .stat-value': {
+                      transform: 'scale(1.05)',
+                      color: card.color
+                    }
+                  },
+                  '&:before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: 5,
+                    background: `linear-gradient(90deg, ${card.color} 0%, ${alpha(card.color, 0.8)} 50%, ${card.color} 100%)`,
+                    zIndex: 1,
+                    borderRadius: '16px 16px 0 0'
+                  }
+                }}
+                onClick={() => handleStatCardClick(card.type)}
+              >
+                <CardContent sx={{ p: 3, position: 'relative', zIndex: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2 }}>
+                    <Box>
+                      <Typography 
+                        color="text.secondary" 
+                        variant="body2" 
+                        fontWeight={600}
+                        sx={{ 
+                          textTransform: 'uppercase', 
+                          letterSpacing: 1,
+                          fontSize: '0.75rem',
+                          opacity: 0.8
+                        }}
+                      >
+                        {card.title}
+                      </Typography>
+                      <Typography 
+                        className="stat-value"
+                        variant="h3" 
+                        fontWeight={800} 
+                        sx={{ 
+                          color: card.color, 
+                          mt: 1,
+                          transition: 'all 0.3s ease',
+                          textShadow: `0 2px 4px ${alpha(card.color, 0.2)}`
+                        }}
+                      >
+                        {card.value}
+                      </Typography>
+                    </Box>
+                    <Box
+                      className="stat-icon"
+                      sx={{
+                        width: 64,
+                        height: 64,
+                        borderRadius: 3,
+                        background: `linear-gradient(135deg, ${card.bgColor} 0%, ${alpha(card.color, 0.1)} 100%)`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: card.color,
+                        boxShadow: `0 8px 32px ${alpha(card.color, 0.3)}, inset 0 1px 0 rgba(255,255,255,0.5)`,
+                        border: `2px solid ${alpha(card.color, 0.1)}`,
+                        transition: 'all 0.3s ease',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        '&:before': {
+                          content: '""',
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          background: `linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 100%)`,
+                          borderRadius: 'inherit'
+                        }
+                      }}
+                    >
+                      {React.cloneElement(card.icon, { 
+                        sx: { 
+                          fontSize: 32,
+                          filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
+                          position: 'relative',
+                          zIndex: 1
+                        } 
+                      })}
+                    </Box>
+                  </Box>
+                  
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box
+                      className="pulse"
+                      sx={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        background: `linear-gradient(135deg, ${card.color} 0%, ${alpha(card.color, 0.6)} 100%)`,
+                        boxShadow: `0 0 8px ${alpha(card.color, 0.4)}`,
+                        animationDelay: `${index * 200}ms`
+                      }}
+                    />
+                    <Typography 
+                      variant="caption" 
+                      color="text.secondary" 
+                      fontWeight={600}
+                      sx={{ 
+                        fontSize: '0.75rem',
+                        opacity: 0.8
+                      }}
+                    >
+                      Dữ liệu thời gian thực
+                    </Typography>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+
+        {/* Main Content */}
+        <Grid container spacing={3}>
+          {/* Recent Meetings */}
+          <Grid item xs={12} md={8}>
+            <Card 
+              elevation={0}
+              className="slide-in-left"
+              sx={{ 
+                height: '100%',
+                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                borderRadius: 4,
+                background: 'rgba(255, 255, 255, 0.9)',
+                backdropFilter: 'blur(10px)',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                  borderColor: alpha(theme.palette.primary.main, 0.2)
+                }
+              }}
+            >
+              <CardContent sx={{ p: 0 }}>
+                {/* Card Header */}
+                <Box sx={{ 
+                  p: 3, 
+                  pb: 2,
+                  borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+                  background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.02)} 0%, ${alpha(theme.palette.primary.main, 0.01)} 100%)`,
+                  position: 'relative',
+                  overflow: 'hidden',
+                  '&:before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: 3,
+                    background: `linear-gradient(90deg, ${theme.palette.primary.main} 0%, ${alpha(theme.palette.primary.main, 0.6)} 100%)`,
+                    borderRadius: '0 0 4px 4px'
+                  }
+                }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Box>
+                      <Typography variant="h6" fontWeight={600} gutterBottom>
+                        Cuộc họp gần đây
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Theo dõi các cuộc họp trong 7 ngày qua
+                      </Typography>
+                    </Box>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      endIcon={<ArrowForwardIcon />}
+                      onClick={() => navigate('/meetings')}
+                      sx={{ 
+                        borderRadius: 2,
+                        textTransform: 'none',
+                        fontWeight: 500
+                      }}
+                    >
+                      Xem tất cả
+                    </Button>
+                  </Box>
+                </Box>
+
+                {/* Meetings List */}
+                <Box sx={{ p: 2 }}>
+                  {recentMeetings.length > 0 ? (
+                    <Stack spacing={2}>
+                      {recentMeetings.map((meeting, index) => {
+                        const status = getMeetingStatus(meeting.startTime, meeting.endTime);
+                        return (
+                          <Paper
+                            key={meeting._id}
+                            elevation={0}
+                            sx={{
+                              p: 2.5,
+                              cursor: 'pointer',
+                              borderRadius: 2,
+                              border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+                              transition: 'all 0.2s ease-in-out',
+                              '&:hover': {
+                                borderColor: theme.palette.primary.main,
+                                boxShadow: `0 4px 20px ${alpha(theme.palette.primary.main, 0.1)}`,
+                                transform: 'translateY(-2px)'
+                              }
+                            }}
+                            onClick={() => navigate(`/meetings/${meeting._id}`)}
+                          >
+                            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                              <Box
+                                sx={{
+                                  width: 48,
+                                  height: 48,
+                                  borderRadius: 2,
+                                  bgcolor: alpha(theme.palette.primary.main, 0.1),
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: 'primary.main',
+                                  flexShrink: 0
+                                }}
+                              >
+                                <CalendarIcon />
+                              </Box>
+                              <Box sx={{ flex: 1, minWidth: 0 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                  <Typography variant="subtitle1" fontWeight={600} noWrap sx={{ flex: 1 }}>
+                                    {meeting.title}
+                                  </Typography>
+                                  <Chip
+                                    label={getStatusLabel(status)}
+                                    color={getStatusColor(status)}
+                                    size="small"
+                                    sx={{ fontWeight: 500 }}
+                                  />
+                                </Box>
+                                <Stack spacing={0.8}>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <AccessTimeIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                                    <Typography variant="body2" color="text.secondary">
+                                      {formatDate(meeting.startTime)} • {formatTime(meeting.startTime)} - {formatTime(meeting.endTime)}
+                                    </Typography>
+                                  </Box>
+                                  {(meeting.room || meeting.location) && (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                      <LocationIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                                      <Typography variant="body2" color="text.secondary" noWrap>
+                                        {meeting.room ? meeting.room.name : meeting.location}
+                                      </Typography>
+                                    </Box>
+                                  )}
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <GroupsIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                                    <Typography variant="body2" color="text.secondary">
+                                      {meeting.participants?.length || 0} người tham gia
+                                    </Typography>
+                                  </Box>
+                                </Stack>
+                              </Box>
+                              <IconButton 
+                                size="small"
+                                sx={{ 
+                                  color: 'text.secondary',
+                                  '&:hover': { color: 'primary.main' }
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/meetings/${meeting._id}`);
+                                }}
+                              >
+                                <ArrowForwardIcon fontSize="small" />
+                              </IconButton>
+                            </Box>
+                          </Paper>
+                        );
+                      })}
+                    </Stack>
+                  ) : (
+                    <Box sx={{ textAlign: 'center', py: 6 }}>
+                      <Box
+                        sx={{
+                          width: 80,
+                          height: 80,
+                          borderRadius: '50%',
+                          bgcolor: alpha(theme.palette.primary.main, 0.1),
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          mx: 'auto',
+                          mb: 2
+                        }}
+                      >
+                        <EventBusyIcon sx={{ fontSize: 40, color: 'primary.main' }} />
+                      </Box>
+                      <Typography variant="h6" fontWeight={500} gutterBottom>
+                        Chưa có cuộc họp nào
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Tạo cuộc họp đầu tiên để bắt đầu
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Right Sidebar */}
+          <Grid item xs={12} md={4}>
+            <Stack spacing={3}>
+              {/* Quick Actions */}
+              <Card 
+                elevation={0}
+                className="slide-in-right"
+                sx={{ 
+                  border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                  borderRadius: 4,
+                  background: 'rgba(255, 255, 255, 0.9)',
+                  backdropFilter: 'blur(10px)',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-1px)',
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.03)',
+                    borderColor: alpha(theme.palette.primary.main, 0.15)
+                  }
+                }}
+              >
+                <CardContent sx={{ p: 3 }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    Các tính năng được sử dụng nhiều nhất
+                  </Typography>
+                  <QuickActions
+                    userId={user?._id}
+                    onNavigate={(path) => navigate(path)}
+                    catalog={[
+                      { id: 'meetings', icon: <CalendarIcon />, text: 'Xem lịch họp', path: '/meetings', color: 'primary' },
+                      { id: 'rooms', icon: <LocationIcon />, text: 'Quản lý phòng họp', path: '/meeting-rooms', color: 'success' },
+                      { id: 'archives', icon: <AssignmentIcon />, text: 'Lưu trữ tài liệu', path: '/archives', color: 'warning' },
+                      { id: 'invitations', icon: <MailIcon />, text: 'Lời mời họp', path: '/invitations', color: 'info' },
+                      { id: 'reports', icon: <TrendingUpIcon />, text: 'Báo cáo thống kê', path: '/reports', color: 'secondary' },
+                      { id: 'create', icon: <AddIcon />, text: 'Tạo cuộc họp mới', path: '/meetings/create', color: 'success' }
+                    ]}
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Pending Items */}
+              {(pendingProtocols.length > 0 || pendingInvitations.length > 0) && (
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" fontWeight={600} gutterBottom>
+                      Chờ xử lý
+                    </Typography>
+                    <List sx={{ py: 0 }}>
+                      {pendingProtocols.length > 0 && (
+                        <Box
+                          sx={{
+                            cursor: 'pointer',
+                            '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.04) }
+                          }}
+                          onClick={() => navigate('/protocol-approvals')}
+                        >
+                          <ListItem
+                            sx={{ px: 0 }}
+                          >
+                            <ListItemAvatar>
+                              <Badge badgeContent={pendingProtocols.length} color="error">
+                                <Avatar sx={{ bgcolor: alpha(theme.palette.warning.main, 0.1), color: 'warning.main' }}>
+                                  <DescriptionIcon />
+                                </Avatar>
+                              </Badge>
+                            </ListItemAvatar>
+                            <ListItemText
+                              primary="Biên bản chờ duyệt"
+                              secondary={`${pendingProtocols.length} biên bản`}
+                            />
+                          </ListItem>
+                          
+                          {/* Hiển thị danh sách biên bản gọn gàng */}
+                          <Box sx={{ px: 2, pb: 2 }}>
+                            <ProtocolList
+                              protocols={pendingProtocols}
+                              maxItems={3}
+                              onView={(protocol) => {
+                                // Navigate to protocol detail or open modal
+                                console.log('View protocol:', protocol);
+                              }}
+                              canApprove={user?.role === 'admin' || user?.role === 'manager'}
+                            />
+                          </Box>
+                        </Box>
+                      )}
+                      {pendingInvitations.length > 0 && (
+                        <ListItem
+                          sx={{
+                            px: 0,
+                            cursor: 'pointer',
+                            '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.04) }
+                          }}
+                          onClick={() => navigate('/invitations')}
+                        >
+                          <ListItemAvatar>
+                            <Badge badgeContent={pendingInvitations.length} color="error">
+                              <Avatar sx={{ bgcolor: alpha(theme.palette.info.main, 0.1), color: 'info.main' }}>
+                                <MailIcon />
+                              </Avatar>
+                            </Badge>
+                          </ListItemAvatar>
+                          <ListItemText
+                            primary="Lời mời họp"
+                            secondary={`${pendingInvitations.length} lời mời`}
+                          />
+                        </ListItem>
+                      )}
+                    </List>
+                  </CardContent>
+                </Card>
+              )}
+
+
+            </Stack>
+          </Grid>
+        </Grid>
+      </Box>
+    </Container>
+  );
+};
+
+export default Dashboard;

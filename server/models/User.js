@@ -37,8 +37,15 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['admin', 'manager', 'employee', 'secretary'],
+    enum: ['admin', 'manager', 'secretary', 'assistant', 'technician', 'employee'],
     default: 'employee'
+  },
+  originalRole: {
+    type: String,
+    enum: ['admin', 'manager', 'secretary', 'assistant', 'technician', 'employee']
+  },
+  temporaryRoleExpiresAt: {
+    type: Date
   },
   department: {
     type: String,
@@ -141,5 +148,8 @@ userSchema.statics.findByEmail = function(email) {
 userSchema.statics.findByRole = function(role) {
   return this.find({ role, isActive: true });
 };
+
+// Enable timestamps (createdAt, updatedAt)
+userSchema.set('timestamps', true);
 
 module.exports = mongoose.model('User', userSchema); 

@@ -30,6 +30,20 @@ const meetingSchema = new mongoose.Schema({
     trim: true,
     maxlength: [200, 'Địa điểm không được vượt quá 200 ký tự']
   },
+  room: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'MeetingRoom'
+  },
+  roomApproval: {
+    status: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected', 'not_required'],
+      default: 'not_required'
+    },
+    approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    approvedAt: { type: Date },
+    note: { type: String, trim: true, maxlength: 500 }
+  },
   meetingLink: {
     type: String,
     trim: true,
@@ -45,6 +59,16 @@ const meetingSchema = new mongoose.Schema({
     enum: ['scheduled', 'ongoing', 'completed', 'cancelled', 'postponed'],
     default: 'scheduled'
   },
+  postponeReason: {
+    type: String,
+    trim: true,
+    maxlength: [500, 'Lý do hoãn không được vượt quá 500 ký tự']
+  },
+  cancelReason: {
+    type: String,
+    trim: true,
+    maxlength: [500, 'Lý do hủy không được vượt quá 500 ký tự']
+  },
   priority: {
     type: String,
     enum: ['low', 'medium', 'high', 'urgent'],
@@ -54,6 +78,11 @@ const meetingSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: [true, 'Người tổ chức là bắt buộc']
+  },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+    // Không bắt buộc để tương thích với dữ liệu cũ
   },
   secretary: {
     type: mongoose.Schema.Types.ObjectId,
@@ -79,11 +108,32 @@ const meetingSchema = new mongoose.Schema({
       maxlength: [500, 'Ghi chú không được vượt quá 500 ký tự']
     }
   }],
-  agenda: {
-    type: String,
-    trim: true,
-    maxlength: [2000, 'Chương trình không được vượt quá 2000 ký tự']
-  },
+  agenda: [{
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: [200, 'Tiêu đề mục không được vượt quá 200 ký tự']
+    },
+    description: {
+      type: String,
+      trim: true,
+      maxlength: [5000, 'Mô tả không được vượt quá 5000 ký tự']
+    },
+    order: {
+      type: Number,
+      default: 1,
+      min: [1, 'Thứ tự phải ít nhất là 1']
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    },
+    updatedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   minutes: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Minutes'
@@ -203,6 +253,176 @@ const meetingSchema = new mongoose.Schema({
       default: Date.now
     }
   }],
+  // ===== Decisions & Voting =====
+  decisions: {
+    type: [{
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 500
+    },
+    description: {
+      type: String,
+      trim: true,
+      maxlength: 2000
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    },
+    // votes lưu theo user để tránh trùng lặp, mỗi user 1 phiếu
+    votes: [{
+      user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+      },
+      choice: {
+        type: String,
+        enum: ['yes', 'no', 'abstain'],
+        required: true
+      },
+      votedAt: {
+        type: Date,
+        default: Date.now
+      }
+    }],
+    // optional kết quả chốt
+    finalized: {
+      type: Boolean,
+      default: false
+    },
+    finalResult: {
+      type: String,
+      enum: ['approved', 'rejected', 'tied', 'none'],
+      default: 'none'
+    }
+  }],
+    default: []
+  },
+  // ===== Tasks (Action items) =====
+  tasks: {
+    type: [{
+      title: {
+        type: String,
+        required: true,
+        trim: true,
+        maxlength: 500
+      },
+      assignee: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      },
+      completed: {
+        type: Boolean,
+        default: false
+      },
+      dueDate: {
+        type: Date
+      },
+      createdBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+      },
+      createdAt: {
+        type: Date,
+        default: Date.now
+      },
+      updatedAt: {
+        type: Date,
+        default: Date.now
+      }
+    }],
+    default: []
+  },
+  // ===== Minutes (Biên bản) history =====
+  minutesHistory: [{
+    content: {
+      type: String,
+      required: false,
+      default: '',
+      trim: true,
+      maxlength: [20000, 'Biên bản không được vượt quá 20000 ký tự']
+    },
+    status: {
+      type: String,
+      enum: ['draft', 'pending', 'approved', 'rejected'],
+      default: 'draft'
+    },
+    reviewer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    attachment: {
+      name: {
+        type: String,
+        trim: true
+      },
+      path: {
+        type: String,
+        trim: true
+      },
+      size: {
+        type: Number
+      },
+      uploadedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      },
+      uploadedAt: {
+        type: Date,
+        default: Date.now
+      }
+    },
+    // Hỗ trợ nhiều file đính kèm cho biên bản (mới)
+    attachments: [{
+      name: {
+        type: String,
+        trim: true
+      },
+      path: {
+        type: String,
+        trim: true
+      },
+      size: {
+        type: Number
+      },
+      uploadedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      },
+      uploadedAt: {
+        type: Date,
+        default: Date.now
+      }
+    }],
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    },
+    updatedAt: {
+      type: Date,
+      default: Date.now
+    },
+    submittedAt: {
+      type: Date
+    },
+    reviewedAt: {
+      type: Date
+    }
+  }],
   notes: [{
     text: {
       type: String,
@@ -261,6 +481,7 @@ const meetingSchema = new mongoose.Schema({
 // Index để tối ưu hóa truy vấn
 meetingSchema.index({ startTime: 1 });
 meetingSchema.index({ organizer: 1 });
+meetingSchema.index({ createdBy: 1 });
 meetingSchema.index({ secretary: 1 });
 meetingSchema.index({ 'attendees.user': 1 });
 meetingSchema.index({ status: 1 });

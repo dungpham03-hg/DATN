@@ -1,67 +1,77 @@
-import { useCallback } from 'react';
-import { useGlobalLoading } from '../contexts/GlobalLoadingContext';
-import { withGlobalLoading, apiPresets, handleFormSubmission } from '../utils/apiHandler';
+import { useState, useCallback } from 'react';
+import { API_CONFIG, ERROR_MESSAGES } from '../constants';
+import { error } from '../utils/logger';
 
-// Custom hook để sử dụng API calls với global loading
-export const useApiCall = () => {
-  const globalLoading = useGlobalLoading();
+/**
+ * Custom hook for API calls with loading, error, and retry logic
+ * @param {Function} apiFunction - The API function to call
+ * @returns {Object} - { data, loading, error, execute, retry }
+ */
+export const useApiCall = (apiFunction) => {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
 
-  // Hàm để tạo API call với custom options
-  const createCall = useCallback((apiFunction, options = {}) => {
-    return withGlobalLoading(apiFunction, options);
-  }, []);
+  const execute = useCallback(async (...args) => {
+    setLoading(true);
+    setApiError(null);
 
-  // Các preset sẵn có
-  const call = {
-    // Tải dữ liệu với auto retry
-    loading: (apiFunction) => apiPresets.loading(apiFunction),
-    
-    // Lưu dữ liệu
-    saving: (apiFunction) => apiPresets.saving(apiFunction),
-    
-    // Xóa dữ liệu
-    deleting: (apiFunction) => apiPresets.deleting(apiFunction),
-    
-    // Upload file
-    uploading: (apiFunction) => apiPresets.uploading(apiFunction),
-    
-    // Kết nối service
-    connecting: (apiFunction) => apiPresets.connecting(apiFunction),
-    
-    // Custom call
-    custom: createCall
-  };
-
-  // Hàm xử lý form submission
-  const submitForm = useCallback(async (submitFunction, options = {}) => {
-    return await handleFormSubmission(submitFunction, options);
-  }, []);
-
-  // Hàm thực hiện action với loading thủ công
-  const executeWithLoading = useCallback(async (
-    asyncFunction, 
-    loadingText = 'Đang xử lý...', 
-    type = 'default'
-  ) => {
     try {
-      globalLoading.showLoading(loadingText, type);
-      const result = await asyncFunction();
+      const result = await apiFunction(...args);
+      setData(result);
+      setRetryCount(0);
       return result;
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || err.message || ERROR_MESSAGES.GENERIC_ERROR;
+      setApiError(errorMessage);
+      error('API call failed', err);
+      throw err;
     } finally {
-      globalLoading.hideLoading();
+      setLoading(false);
     }
-  }, [globalLoading]);
+  }, [apiFunction]);
+
+  const retry = useCallback(async (...args) => {
+    if (retryCount < API_CONFIG.RETRY_ATTEMPTS) {
+      setRetryCount(prev => prev + 1);
+      return execute(...args);
+    }
+    throw new Error('Maximum retry attempts reached');
+  }, [execute, retryCount]);
+
+  const reset = useCallback(() => {
+    setData(null);
+    setApiError(null);
+    setRetryCount(0);
+  }, []);
 
   return {
-    call,
-    submitForm,
-    executeWithLoading,
-    // Expose global loading methods
-    showLoading: globalLoading.showLoading,
-    hideLoading: globalLoading.hideLoading,
-    showErrorLoading: globalLoading.showErrorLoading,
-    showWarningLoading: globalLoading.showWarningLoading
+    data,
+    loading,
+    error: apiError,
+    execute,
+    retry,
+    reset,
+    retryCount
   };
 };
 
-export default useApiCall; 
+/**
+ * Hook for handling API calls with automatic error handling
+ * @param {Function} apiFunction - The API function to call
+ * @returns {Function} - Enhanced API function
+ */
+export const useApiHandler = (apiFunction) => {
+  return useCallback(async (...args) => {
+    try {
+      return await apiFunction(...args);
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || err.message || ERROR_MESSAGES.GENERIC_ERROR;
+      error('API call failed', err);
+      throw new Error(errorMessage);
+    }
+  }, [apiFunction]);
+};
+
+export default useApiCall;

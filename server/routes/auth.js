@@ -321,12 +321,23 @@ router.get('/me', authenticateToken, async (req, res) => {
       },
       '507f1f77bcf86cd799439013': {
         _id: '507f1f77bcf86cd799439013',
+        fullName: 'Nguyễn Văn Assistant',
+        email: 'assistant@example.com',
+        role: 'assistant',
+        department: 'Administration',
+        position: 'Administrative Assistant',
+        phone: '0903456789',
+        isActive: true,
+        emailVerified: true
+      },
+      '507f1f77bcf86cd799439014': {
+        _id: '507f1f77bcf86cd799439014',
         fullName: 'Trần Thị User',
         email: 'user@example.com',
         role: 'employee',
         department: 'Marketing',
         position: 'Marketing Specialist',
-        phone: '0903456789',
+        phone: '0904567890',
         isActive: true,
         emailVerified: true
       }
@@ -490,16 +501,30 @@ router.post('/test-login', loginValidation, handleValidationErrors, async (req, 
           emailVerified: true
         }
       },
+      'assistant@example.com': {
+        password: 'Assistant123',
+        user: {
+          _id: '507f1f77bcf86cd799439013',
+          fullName: 'Nguyễn Văn Assistant',
+          email: 'assistant@example.com',
+          role: 'assistant',
+          department: 'Administration',
+          position: 'Administrative Assistant',
+          phone: '0903456789',
+          isActive: true,
+          emailVerified: true
+        }
+      },
       'user@example.com': {
         password: 'User123',
         user: {
-          _id: '507f1f77bcf86cd799439013',
+          _id: '507f1f77bcf86cd799439014',
           fullName: 'Trần Thị User',
           email: 'user@example.com',
           role: 'employee',
           department: 'Marketing',
           position: 'Marketing Specialist',
-          phone: '0903456789',
+          phone: '0904567890',
           isActive: true,
           emailVerified: true
         }
@@ -565,12 +590,23 @@ router.get('/test-me', authenticateToken, async (req, res) => {
       },
       '507f1f77bcf86cd799439013': {
         _id: '507f1f77bcf86cd799439013',
+        fullName: 'Nguyễn Văn Assistant',
+        email: 'assistant@example.com',
+        role: 'assistant',
+        department: 'Administration',
+        position: 'Administrative Assistant',
+        phone: '0903456789',
+        isActive: true,
+        emailVerified: true
+      },
+      '507f1f77bcf86cd799439014': {
+        _id: '507f1f77bcf86cd799439014',
         fullName: 'Trần Thị User',
         email: 'user@example.com',
         role: 'employee',
         department: 'Marketing',
         position: 'Marketing Specialist',
-        phone: '0903456789',
+        phone: '0904567890',
         isActive: true,
         emailVerified: true
       }
@@ -601,6 +637,7 @@ router.post('/test-register', registerValidation, handleValidationErrors, async 
     const existingDemoEmails = [
       'admin@example.com',
       'manager@example.com', 
+      'assistant@example.com',
       'user@example.com'
     ];
 
@@ -839,7 +876,7 @@ router.get('/users', authenticateToken, async (req, res) => {
     
     // Lấy danh sách users (không lấy password)
     const users = await User.find(query)
-      .select('fullName email department avatar role')
+      .select('fullName email department avatar role position')
       .sort('fullName');
     
     res.json({ 

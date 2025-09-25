@@ -1,5 +1,10 @@
 import React from 'react';
-import { Button, Stack, Typography, Divider } from '@mui/material';
+import {
+  Button,
+  Stack,
+  Typography,
+  Divider
+} from '@mui/material';
 import GoogleIcon from '@mui/icons-material/Google';
 import GitHubIcon from '@mui/icons-material/GitHub';
 

@@ -7,6 +7,7 @@ const { authenticateToken } = require('../middleware/auth');
 const Minutes = require('../models/Minutes');
 const Meeting = require('../models/Meeting');
 const User = require('../models/User');
+const Archive = require('../models/Archive');
 
 const router = express.Router();
 
@@ -28,9 +29,21 @@ const handleValidationErrors = (req, res, next) => {
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const { meeting, status, latest } = req.query;
+
     
     let query = {};
-    if (meeting) query.meeting = meeting;
+    
+    if (meeting) {
+      // Validate meeting ID format (MongoDB ObjectId format)
+      if (typeof meeting !== 'string' || !/^[0-9a-fA-F]{24}$/.test(meeting)) {
+        return res.status(400).json({ 
+          message: 'Meeting ID không hợp lệ', 
+          received: meeting,
+          type: typeof meeting 
+        });
+      }
+      query.meeting = meeting;
+    }
     if (status) query.status = status;
     
     let minutes;
@@ -128,7 +141,7 @@ router.post('/', authenticateToken, [
 ], handleValidationErrors, async (req, res) => {
   try {
     // Kiểm tra quyền tạo biên bản
-    if (!['admin', 'manager', 'secretary'].includes(req.user.role)) {
+    if (!['admin', 'manager', 'secretary', 'assistant', 'technician'].includes(req.user.role)) {
       return res.status(403).json({
         message: 'Bạn không có quyền tạo biên bản'
       });
@@ -188,6 +201,11 @@ router.post('/', authenticateToken, [
     // Cập nhật meeting reference
     meeting.minutes = minutes._id;
     await meeting.save();
+
+    // push snapshot vào archive
+    try {
+      await Archive.updateOne({ meeting: meetingId }, { $push: { minutesSnapshots: minutes } });
+    } catch(e) { console.error('push minutes snapshot error', e.message);}
 
     res.status(201).json({
       message: 'Tạo biên bản thành công',
@@ -377,6 +395,11 @@ router.post('/:id/close-voting', authenticateToken, async (req, res) => {
     minutes.approvedAt = new Date();
     
     await minutes.save();
+
+    // cập nhật snapshot trong archive
+    try {
+      await Archive.updateOne({ meeting: minutes.meeting, 'minutesSnapshots._id': minutes._id }, { 'minutesSnapshots.$': minutes });
+    } catch(e){ console.error('update minutes snapshot error', e.message);}
 
     // Populate để trả về thông tin đầy đủ
     await minutes.populate([

@@ -12,6 +12,9 @@ const Archive = require('./models/Archive');
 const Minutes = require('./models/Minutes');
 const Notification = require('./models/Notification');
 const cron = require('node-cron');
+const User = require('./models/User');
+const { cleanupOldNotifications } = require('./utils/notificationHelper');
+
 
 // Load environment variables
 dotenv.config();
@@ -30,7 +33,8 @@ const app = express();
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '500mb' }));
+app.use(express.urlencoded({ limit: '500mb', extended: true }));
 app.use(passport.initialize());
 
 // Connect to MongoDB với cấu hình SSL/TLS phù hợp
@@ -84,7 +88,8 @@ app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/departments', require('./routes/departments'));
 app.use('/api/meeting-rooms', require('./routes/meetingRooms'));
 app.use('/api/archives', require('./routes/archives'));
-app.use('/api/debug', require('./routes/debug'));
+app.use('/api/protocols', require('./routes/protocols'));
+app.use('/api/users', require('./routes/users'));
 
 // Serve static files from the React app
 app.use(express.static(path.join(__dirname, '../client/build')));
@@ -138,8 +143,26 @@ io.on('connection', (socket) => {
     socket.join(`user_${socket.userId}`);
   }
 
+  // Handle disconnect
+  socket.on('disconnect', (reason) => {
+    // Silent disconnect
+  });
+
+  // Handle errors
+  socket.on('error', (error) => {
+    // Silent error handling
+  });
+
   socket.on('joinMeeting', (meetingId) => {
-    if (meetingId) socket.join(meetingId);
+    if (meetingId) {
+      socket.join(meetingId);
+    }
+  });
+
+  socket.on('leaveMeeting', (meetingId) => {
+    if (meetingId) {
+      socket.leave(meetingId);
+    }
   });
 
   socket.on('meetingMessage', async ({ meetingId, text }) => {
@@ -157,26 +180,44 @@ io.on('connection', (socket) => {
 
       io.to(meetingId).emit('newMeetingMessage', msgPop);
     } catch (e) {
-      console.error('socket meetingMessage error', e);
+      socket.emit('error', { message: 'Lỗi khi gửi tin nhắn' });
     }
   });
 });
 
-// Cron: mỗi phút kiểm tra cuộc họp kết thúc và cập nhật trạng thái
+// Cron: mỗi phút kiểm tra và cập nhật trạng thái cuộc họp
 cron.schedule('*/1 * * * *', async () => {
   try {
     const now = new Date();
     
-    // 1. Cập nhật status cuộc họp đã kết thúc
-    const updated = await Meeting.updateMany(
-      { endTime: { $lte: now }, status: { $in: ['scheduled', 'ongoing'] } },
-      { status: 'completed' }
-    );
-    if (updated.modifiedCount) {
-      console.log(`Cron: đã cập nhật ${updated.modifiedCount} cuộc họp thành completed`);
+    // 1. Cập nhật status cuộc họp bắt đầu (từ scheduled -> ongoing)
+    const startedMeetings = await Meeting.find({ 
+      startTime: { $lte: now }, 
+      endTime: { $gt: now },
+      status: 'scheduled' 
+    });
+    
+    for (const meeting of startedMeetings) {
+      meeting.status = 'ongoing';
+      await meeting.save();
     }
+    
+    // Silent update
 
-    // 2. Tự động lưu trữ tất cả cuộc họp completed chưa có archive
+    // 2. Cập nhật status cuộc họp đã kết thúc (từ scheduled/ongoing -> completed)
+    const endedMeetings = await Meeting.find({ 
+      endTime: { $lte: now }, 
+      status: { $in: ['scheduled', 'ongoing'] } 
+    });
+    
+    for (const meeting of endedMeetings) {
+      meeting.status = 'completed';
+      await meeting.save();
+    }
+    
+    // Silent update
+
+    // 3. Tự động lưu trữ tất cả cuộc họp completed chưa có archive
     const completedMeetings = await Meeting.find({ 
       status: 'completed' 
     }).populate('organizer', 'fullName email department position')
@@ -186,7 +227,7 @@ cron.schedule('*/1 * * * *', async () => {
       .populate('notes.author', 'fullName email')
       .populate('summaryMessages.author', 'fullName email');
 
-    console.log(`📋 Found ${completedMeetings.length} completed meetings`);
+    // Silent processing
 
     for (const meeting of completedMeetings) {
       try {
@@ -196,7 +237,7 @@ cron.schedule('*/1 * * * *', async () => {
           continue; // Đã có archive rồi, bỏ qua
         }
 
-        console.log(`🗄️  Creating archive for meeting: ${meeting.title}`);
+        // Creating archive
 
         // Lấy thông tin biên bản nếu có
         let minutesSnapshot = null;
@@ -327,16 +368,32 @@ cron.schedule('*/1 * * * *', async () => {
 
         // Tạo archive
         const newArchive = await Archive.create(archiveData);
-        console.log(`✅ Successfully archived meeting ${meeting._id} -> Archive ${newArchive._id}`);
 
       } catch (archiveError) {
-        console.error(`❌ Error archiving meeting ${meeting._id}:`, archiveError.message);
-        console.error('Stack:', archiveError.stack);
+        // Silent error handling
       }
     }
 
+    // 4. Revert temporary secretary roles
+    const expiredUsers = await User.find({ temporaryRoleExpiresAt: { $lte: now } });
+    for (const u of expiredUsers) {
+      u.role = u.originalRole || 'employee';
+      u.originalRole = undefined;
+      u.temporaryRoleExpiresAt = undefined;
+      await u.save();
+    }
+
   } catch (e) {
-    console.error('❌ Cron error:', e.message);
+    // Silent error handling
+  }
+});
+
+// Cron: mỗi ngày lúc 2:00 AM cleanup notifications cũ
+cron.schedule('0 2 * * *', async () => {
+  try {
+    await cleanupOldNotifications(30); // Xóa notifications đã đọc cũ hơn 30 ngày
+  } catch (error) {
+    // Silent error handling
   }
 });
 

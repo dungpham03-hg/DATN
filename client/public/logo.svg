@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background with rounded corners -->
+  <rect width="512" height="512" rx="128" fill="#0066FF"/>
+  
+  <!-- Calendar Icon -->
+  <path d="M384 128H352V96C352 87.16 344.84 80 336 80C327.16 80 320 87.16 320 96V128H192V96C192 87.16 184.84 80 176 80C167.16 80 160 87.16 160 96V128H128C101.6 128 80 149.6 80 176V384C80 410.4 101.6 432 128 432H384C410.4 432 432 410.4 432 384V176C432 149.6 410.4 128 384 128ZM384 384H128V224H384V384Z" fill="white"/>
+  
+  <!-- Meeting Dots -->
+  <circle cx="208" cy="288" r="24" fill="white"/>
+  <circle cx="304" cy="288" r="24" fill="white"/>
+  <circle cx="256" cy="336" r="24" fill="white"/>
+</svg> 

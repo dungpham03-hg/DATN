@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { useAuth } from './AuthContext';
 import { useSocket } from './SocketContext';
@@ -16,32 +16,77 @@ export const useNotification = () => {
 
 export const NotificationProvider = ({ children }) => {
   const { token, user } = useAuth();
-  const { socket } = useSocket();
+  const { socket, isConnected, connectionError, isDisabled } = useSocket();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [toasts, setToasts] = useState([]);
+  const [lastFetchTime, setLastFetchTime] = useState(null);
   
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
+  const pollingIntervalRef = useRef(null);
+  const POLLING_INTERVAL = 30000; // 30 seconds
+  const lastNotificationIdRef = useRef(null);
 
-  // Fetch notifications từ server
-  const fetchNotifications = async () => {
+  // Fetch notifications từ server với error handling và retry
+  const fetchNotifications = async (showLoading = true) => {
     if (!token) return;
     
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const response = await axios.get(`${API_BASE_URL}/notifications`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 10000 // 10 second timeout
       });
       
-      setNotifications(response.data.notifications);
-      setUnreadCount(response.data.unreadCount);
+      const newNotifications = response.data.notifications || [];
+      const newUnreadCount = response.data.unreadCount || 0;
+      
+      // Chỉ cập nhật nếu có thay đổi
+      setNotifications(prev => {
+        if (JSON.stringify(prev) !== JSON.stringify(newNotifications)) {
+          return newNotifications;
+        }
+        return prev;
+      });
+      
+      setUnreadCount(newUnreadCount);
+      setLastFetchTime(new Date());
+      
+      // Lưu ID của notification mới nhất
+      if (newNotifications.length > 0) {
+        lastNotificationIdRef.current = newNotifications[0]._id;
+      }
     } catch (error) {
-      console.error('Error fetching notifications:', error);
+      console.error('❌ Error fetching notifications:', error);
+      if (error.response?.status === 401) {
+        // Token expired, sẽ được xử lý bởi auth interceptor
+        return;
+      }
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
+
+  // Polling backup khi Socket.IO không hoạt động
+  const startPolling = useCallback(() => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+    }
+    
+    pollingIntervalRef.current = setInterval(() => {
+      if (token && (!isConnected || connectionError)) {
+        fetchNotifications(false); // Không hiển thị loading khi polling
+      }
+    }, POLLING_INTERVAL);
+  }, [token, isConnected, connectionError]);
+
+  const stopPolling = useCallback(() => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+  }, []);
 
   // Đánh dấu thông báo đã đọc
   const markAsRead = async (notificationId) => {
@@ -101,12 +146,20 @@ export const NotificationProvider = ({ children }) => {
     }
   };
 
-  // Lắng nghe real-time notifications từ Socket.IO
+  // Lắng nghe real-time notifications từ Socket.IO với improved handling
   useEffect(() => {
     if (!socket || !user) return;
 
     const handleNewNotification = (notification) => {
-      setNotifications(prev => [notification, ...prev]);
+      // Kiểm tra xem notification đã tồn tại chưa (tránh duplicate)
+      setNotifications(prev => {
+        const exists = prev.some(n => n._id === notification._id);
+        if (!exists) {
+          return [notification, ...prev];
+        }
+        return prev;
+      });
+      
       setUnreadCount(prev => prev + 1);
       
       // Hiển thị browser notification nếu được phép
@@ -114,7 +167,9 @@ export const NotificationProvider = ({ children }) => {
         new Notification(notification.title, {
           body: notification.message,
           icon: '/favicon.ico',
-          tag: notification._id
+          tag: notification._id,
+          requireInteraction: true,
+          silent: false
         });
       }
     };
@@ -126,7 +181,22 @@ export const NotificationProvider = ({ children }) => {
     };
   }, [socket, user]);
 
-  // Fetch notifications khi user login
+  // Quản lý polling dựa trên trạng thái Socket.IO
+  useEffect(() => {
+    if (token && user) {
+      if (isConnected && !connectionError && !isDisabled) {
+        // Socket.IO hoạt động tốt, dừng polling
+        stopPolling();
+      } else {
+        // Socket.IO có vấn đề hoặc bị disable, bắt đầu polling
+        startPolling();
+      }
+    } else {
+      stopPolling();
+    }
+  }, [token, user, isConnected, connectionError, isDisabled, startPolling, stopPolling]);
+
+  // Fetch notifications khi user login và cleanup
   useEffect(() => {
     if (token && user) {
       fetchNotifications();
@@ -135,8 +205,19 @@ export const NotificationProvider = ({ children }) => {
       if ('Notification' in window && Notification.permission === 'default') {
         Notification.requestPermission();
       }
+    } else {
+      // Clear data khi logout
+      setNotifications([]);
+      setUnreadCount(0);
+      setLastFetchTime(null);
+      stopPolling();
     }
-  }, [token, user]);
+
+    // Cleanup function
+    return () => {
+      stopPolling();
+    };
+  }, [token, user, stopPolling]);
 
   const addToast = useCallback((message, type = 'info', duration = 4000) => {
     const id = Date.now() + Math.random();
@@ -173,7 +254,12 @@ export const NotificationProvider = ({ children }) => {
     warning,
     info,
     addToast,
-    removeToast
+    removeToast,
+    // Thêm các state mới
+    isConnected,
+    connectionError,
+    isDisabled,
+    lastFetchTime
   };
 
   return (

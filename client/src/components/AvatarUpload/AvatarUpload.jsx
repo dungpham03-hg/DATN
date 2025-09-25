@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { Modal, Button, Alert, ProgressBar } from 'react-bootstrap';
+
 import { FaUpload, FaTrash, FaCamera, FaCrop, FaUndo, FaCheck } from 'react-icons/fa';
 import './AvatarUpload.css';
 

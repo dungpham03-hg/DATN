@@ -96,7 +96,7 @@ const archiveSchema = new mongoose.Schema({
     size: Number,
     type: {
       type: String,
-      enum: ['meeting_attachment', 'minutes_attachment', 'summary_file', 'additional']
+      enum: ['meeting_attachment', 'minutes_attachment', 'protocol_attachment', 'summary_file', 'summary_message_attachment', 'additional']
     },
     uploadedBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -106,6 +106,15 @@ const archiveSchema = new mongoose.Schema({
     archivedAt: {
       type: Date,
       default: Date.now
+    },
+    // Fields cho summary message attachments
+    messageId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Message'
+    },
+    messageAuthor: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
     }
   }],
   
@@ -282,6 +291,22 @@ const archiveSchema = new mongoose.Schema({
       type: Number,
       default: 7
     }
+  },
+  
+  minutesSnapshot: {
+    type: Object,
+    default: null
+  },
+  
+  // Danh sách thống nhất (minutes) cho nhiều phiên bản
+  minutesSnapshots: {
+    type: [mongoose.Schema.Types.Mixed],
+    default: []
+  },
+  
+  protocolSnapshots: {
+    type: [mongoose.Schema.Types.Mixed],
+    default: []
   }
 }, {
   timestamps: true,
@@ -338,8 +363,8 @@ archiveSchema.pre('save', function(next) {
 archiveSchema.statics.findByUser = function(userId, role, department) {
   let query = { status: 'active' };
   
-  if (role === 'admin') {
-    // Admin thấy tất cả
+  if (role === 'admin' || role === 'assistant') {
+    // Admin và Assistant thấy tất cả
   } else if (role === 'manager' || role === 'secretary') {
     // Manager và Secretary thấy:
     query.$or = [
@@ -384,8 +409,8 @@ archiveSchema.methods.incrementDownloadCount = function() {
 
 // Method để kiểm tra quyền truy cập
 archiveSchema.methods.canAccess = function(userId, userRole, userDepartment) {
-  // Admin có thể truy cập tất cả
-  if (userRole === 'admin') return true;
+  // Admin và Assistant có thể truy cập tất cả
+  if (userRole === 'admin' || userRole === 'assistant') return true;
   
   // Người tạo có thể truy cập
   if (this.createdBy.toString() === userId.toString()) return true;

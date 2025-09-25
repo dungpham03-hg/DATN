@@ -4,8 +4,6 @@ import App from './App';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 
 // Import CSS
-import 'bootstrap/dist/css/bootstrap.min.css';
-import 'react-toastify/dist/ReactToastify.css';
 import 'react-datepicker/dist/react-datepicker.css';
 import './index.css';
 

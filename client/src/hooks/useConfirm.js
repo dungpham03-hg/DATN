@@ -9,8 +9,7 @@ const useConfirm = () => {
     cancelText: 'Hủy bỏ',
     variant: 'danger',
     icon: '⚠️',
-    onConfirm: null,
-  });
+    onConfirm: null});
 
   const showConfirm = useCallback((options) => {
     return new Promise((resolve) => {
@@ -25,8 +24,7 @@ const useConfirm = () => {
         onConfirm: () => {
           hideConfirm();
           resolve(true);
-        },
-      });
+        }});
     });
   }, []);
 
@@ -49,8 +47,7 @@ const useConfirm = () => {
     showConfirm,
     hideConfirm,
     handleConfirm,
-    handleCancel,
-  };
+    handleCancel};
 };
 
 export default useConfirm; 

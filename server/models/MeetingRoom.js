@@ -82,7 +82,7 @@ meetingRoomSchema.methods.isAvailable = async function(startTime, endTime, exclu
   return conflictingMeetings.length === 0;
 };
 
-// Static method để lấy danh sách phòng available
+// Static method để lấy danh sách phòng available với thông tin chi tiết
 meetingRoomSchema.statics.findAvailableRooms = async function(startTime, endTime, capacity = 0) {
   const rooms = await this.find({ 
     isActive: true,
@@ -95,11 +95,44 @@ meetingRoomSchema.statics.findAvailableRooms = async function(startTime, endTime
   for (const room of rooms) {
     const isAvailable = await room.isAvailable(startTime, endTime);
     if (isAvailable) {
-      availableRooms.push(room);
+      // Thêm thông tin về trạng thái hiện tại
+      const roomData = room.toObject();
+      roomData.availabilityStatus = 'available';
+      roomData.availabilityMessage = 'Khả dụng';
+      
+      availableRooms.push(roomData);
     }
   }
   
   return availableRooms;
+};
+
+// Static method để lấy tất cả phòng với trạng thái chi tiết
+meetingRoomSchema.statics.findAllRoomsWithStatus = async function(startTime, endTime, capacity = 0) {
+  const rooms = await this.find({ 
+    isActive: true,
+    capacity: { $gte: capacity }
+  });
+  
+  const Meeting = mongoose.model('Meeting');
+  const roomsWithStatus = [];
+  
+  for (const room of rooms) {
+    const isAvailable = await room.isAvailable(startTime, endTime);
+    const roomData = room.toObject();
+    
+    if (isAvailable) {
+      roomData.availabilityStatus = 'available';
+      roomData.availabilityMessage = 'Khả dụng';
+    } else {
+      roomData.availabilityStatus = 'busy';
+      roomData.availabilityMessage = 'Bận';
+    }
+    
+    roomsWithStatus.push(roomData);
+  }
+  
+  return roomsWithStatus;
 };
 
 // Phương thức chuyển đổi facilities enum sang text tiếng Việt

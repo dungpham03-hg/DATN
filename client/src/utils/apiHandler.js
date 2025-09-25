@@ -1,5 +1,6 @@
 import axios from 'axios';
-import { toast } from 'react-toastify';
+import { toast } from './toast';
+
 
 // Tạo một instance của globalLoading để có thể sử dụng ở ngoài React component
 let globalLoadingInstance = null;

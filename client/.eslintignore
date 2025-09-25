@@ -1,0 +1,19 @@
+# Ignore files with Bootstrap legacy code during migration
+src/pages/Archives/
+src/pages/Meetings/
+src/pages/MeetingRooms/
+src/pages/Invitations/
+src/pages/Protocols/
+src/pages/Profile/Profile.js
+src/backup/
+
+# Build output
+build/
+dist/
+
+# Node modules
+node_modules/
+
+# Generated files
+*.min.js
+*.bundle.js

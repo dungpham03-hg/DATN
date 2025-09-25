@@ -64,16 +64,29 @@ router.get('/', authenticateToken, async (req, res) => {
       endTime 
     } = req.query;
 
-    // Nếu có startTime và endTime, tìm phòng available
+    // Nếu có startTime và endTime, tìm phòng với trạng thái
     if (startTime && endTime) {
-      const rooms = await MeetingRoom.findAvailableRooms(
-        new Date(startTime),
-        new Date(endTime),
-        parseInt(minCapacity) || 0
-      );
+      const { showAll = 'false' } = req.query;
+      
+      let rooms;
+      if (showAll === 'true') {
+        // Hiển thị tất cả phòng với trạng thái
+        rooms = await MeetingRoom.findAllRoomsWithStatus(
+          new Date(startTime),
+          new Date(endTime),
+          parseInt(minCapacity) || 0
+        );
+      } else {
+        // Chỉ hiển thị phòng khả dụng
+        rooms = await MeetingRoom.findAvailableRooms(
+          new Date(startTime),
+          new Date(endTime),
+          parseInt(minCapacity) || 0
+        );
+      }
       
       return res.json({
-        message: 'Lấy danh sách phòng họp khả dụng thành công',
+        message: showAll === 'true' ? 'Lấy danh sách phòng họp thành công' : 'Lấy danh sách phòng họp khả dụng thành công',
         rooms
       });
     }

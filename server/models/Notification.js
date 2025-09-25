@@ -12,7 +12,7 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['meeting_invite', 'meeting_update', 'meeting_reminder', 'meeting_cancelled', 'general'],
+    enum: ['meeting_invite', 'meeting_update', 'meeting_reminder', 'meeting_cancelled', 'meeting_postponed', 'general', 'minutes_pending', 'invite_response', 'protocol_pending'],
     required: true
   },
   title: {

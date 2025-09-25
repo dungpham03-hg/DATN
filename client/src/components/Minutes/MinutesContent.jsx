@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Card, Form, Badge, Modal, Alert, Spinner, Row, Col, ProgressBar } from 'react-bootstrap';
+
 import axios from 'axios';
 import { useNotification } from '../../contexts/NotificationContext';
 import { useApiCall } from '../../hooks/useApiCall';
@@ -30,8 +30,6 @@ const MinutesContent = ({ meetingId, user }) => {
   const { success, error: notify, warning } = useNotification();
   const { submitForm } = useApiCall();
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
-
-
 
   // Fetch minutes data
   const fetchMinutes = async () => {
@@ -74,7 +72,7 @@ const MinutesContent = ({ meetingId, user }) => {
   }, [meetingId]);
 
   // Kiểm tra quyền
-  const canCreateMinutes = user && ['admin', 'manager', 'secretary'].includes(user.role);
+  const canCreateMinutes = user && ['admin', 'manager', 'secretary', 'assistant'].includes(user.role);
   
   // Có thể tạo biên bản mới nếu: có quyền và (chưa có biên bản nào hoặc biên bản hiện tại đã approved hoặc đã đóng phiếu)
   const canCreateNew = canCreateMinutes && (!activeMinutes || activeMinutes.status === 'approved' || activeMinutes.isVotingClosed);
@@ -111,7 +109,7 @@ const MinutesContent = ({ meetingId, user }) => {
 
       // Refresh all minutes data sau khi close
       fetchMinutes();
-      success('Đã đóng bỏ phiếu và lưu biên bản thành công!');
+      success('Đã đóng bỏ phiếu và lưu thống nhất thành công!');
     } catch (error) {
       notify('Lỗi đóng bỏ phiếu: ' + (error.response?.data?.message || error.message));
     }
@@ -171,10 +169,10 @@ const MinutesContent = ({ meetingId, user }) => {
       setShowCreateModal(false);
       setFormData({ title: '', content: '', voteDeadline: '', decisions: [] });
       
-      success('Tạo biên bản thành công!');
+      success('Tạo thống nhất thành công!');
       
     } catch (error) {
-      notify('Lỗi tạo biên bản: ' + (error.response?.data?.message || error.message));
+      notify('Lỗi tạo thống nhất: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -219,7 +217,7 @@ const MinutesContent = ({ meetingId, user }) => {
       });
       return response.data.data;
     } catch (error) {
-      throw new Error('Không thể lấy dữ liệu biên bản: ' + error.message);
+      throw new Error('Không thể lấy dữ liệu thống nhất: ' + error.message);
     }
   };
 
@@ -294,11 +292,18 @@ const MinutesContent = ({ meetingId, user }) => {
     }
   };
 
+  // Helper to truncate text
+  const truncateText = (text, maxLength = 120) => {
+    if (!text) return '';
+    const plain = text.replace(/<[^>]+>/g, ''); // strip html tags
+    return plain.length > maxLength ? plain.slice(0, maxLength) + '…' : plain;
+  };
+
   if (loading) {
     return (
       <div className="text-center py-4">
-        <Spinner animation="border" size="sm" />
-        <p className="mt-2 mb-0">Đang tải biên bản...</p>
+        <CircularProgress animation="border" size="sm"  />
+        <p className="mt-2 mb-0">Đang tải thống nhất...</p>
       </div>
     );
   }
@@ -308,14 +313,14 @@ const MinutesContent = ({ meetingId, user }) => {
       <div className="minutes-empty">
         <div className="text-center py-4">
           <i className="fas fa-file-contract text-muted mb-3" style={{ fontSize: '3rem' }}></i>
-          <h6>Chưa có biên bản cuộc họp</h6>
+          <h6>Chưa có thống nhất cuộc họp</h6>
           <p className="text-muted mb-3">
-            Biên bản giúp ghi lại các quyết định quan trọng và thu thập ý kiến từ người tham gia.
+            Thống nhất giúp ghi lại các quyết định quan trọng và thu thập ý kiến từ người tham gia.
           </p>
           {canCreateNew && (
             <Button variant="primary" onClick={() => setShowCreateModal(true)}>
               <i className="fas fa-plus me-2"></i>
-              Tạo biên bản
+              Tạo thống nhất
             </Button>
           )}
         </div>
@@ -348,8 +353,8 @@ const MinutesContent = ({ meetingId, user }) => {
       {/* Minutes Selector */}
       {allMinutes.length > 1 && (
         <div className="minutes-selector mb-3">
-          <Form.Group>
-            <Form.Label className="small fw-bold">Chọn biên bản:</Form.Label>
+          <Box>
+            <Typography variant="body2" className="small fw-bold">Chọn thống nhất:</Typography>
             <Form.Select 
               size="sm" 
               value={selectedMinutesId || ''} 
@@ -362,7 +367,7 @@ const MinutesContent = ({ meetingId, user }) => {
                 </option>
               ))}
             </Form.Select>
-          </Form.Group>
+          </Box>
         </div>
       )}
 
@@ -376,14 +381,14 @@ const MinutesContent = ({ meetingId, user }) => {
             className="w-100"
           >
             <i className="fas fa-plus me-2"></i>
-            Tạo biên bản mới
+            Tạo thống nhất mới
           </Button>
         </div>
       )}
 
       {/* Minutes Header */}
       <Card className="minutes-card">
-        <Card.Header>
+        <CardHeader>
           <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
             <div className="flex-grow-1">
               <h6 className="mb-1 d-flex align-items-center gap-2">
@@ -438,9 +443,9 @@ const MinutesContent = ({ meetingId, user }) => {
               </Button>
             </div>
           </div>
-        </Card.Header>
+        </CardHeader>
 
-        <Card.Body>
+        <CardContent>
           {/* Content */}
           <div className="minutes-content-text mb-4">
             {(activeMinutes.content || '').split('\n').map((line, index) => (
@@ -638,7 +643,7 @@ const MinutesContent = ({ meetingId, user }) => {
           {activeMinutes.isVotingClosed && (
             <Alert variant={activeMinutes.status === 'approved' ? "success" : "info"}>
               <i className={`fas ${activeMinutes.status === 'approved' ? 'fa-check-circle' : 'fa-lock'} me-2`}></i>
-              {activeMinutes.status === 'approved' ? 'Biên bản đã được phê duyệt' : 'Bỏ phiếu đã đóng'}
+              {activeMinutes.status === 'approved' ? 'Thống nhất đã được phê duyệt' : 'Bỏ phiếu đã đóng'}
               {activeMinutes.status === 'approved' && activeMinutes.approvedAt && (
                 <div className="mt-1">
                   <small>
@@ -653,7 +658,7 @@ const MinutesContent = ({ meetingId, user }) => {
                 <div className="mt-2">
                   <small>
                     <i className="fas fa-info-circle me-1"></i>
-                    Kết quả đã được ghi nhận. Bạn có thể tạo biên bản mới cho lần họp tiếp theo.
+                    Kết quả đã được ghi nhận. Bạn có thể tạo thống nhất mới cho lần họp tiếp theo.
                   </small>
                 </div>
               )}
@@ -666,50 +671,80 @@ const MinutesContent = ({ meetingId, user }) => {
               Đã hết hạn bỏ phiếu
             </Alert>
           )}
-        </Card.Body>
+        </CardContent>
       </Card>
+
+      {/* Minutes History List */}
+      {allMinutes.length > 1 && (
+        <div className="minutes-history mt-4">
+          <h6 className="mb-3">Lịch sử Biên bản</h6>
+          <div className="minutes-history-list">
+            {allMinutes.map(minutes => (
+              <div
+                key={minutes._id}
+                className={`history-item p-3 mb-2 rounded border ${minutes._id === selectedMinutesId ? 'active' : ''}`}
+                style={{ cursor: 'pointer' }}
+                onClick={() => handleSwitchMinutes(minutes._id)}
+              >
+                <div className="d-flex justify-content-between align-items-start gap-2">
+                  <div className="flex-grow-1">
+                    <div className="d-flex align-items-center gap-2 mb-1">
+                      <strong>{minutes.title}</strong>
+                      {getStatusBadge(minutes.status)}
+                    </div>
+                    <small className="text-muted">{truncateText(minutes.content, 100)}</small>
+                  </div>
+                  <small className="text-muted text-nowrap">
+                    {new Date(minutes.createdAt).toLocaleDateString('vi-VN')}
+                  </small>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Create Minutes Modal */}
       <Modal show={showCreateModal} onHide={() => setShowCreateModal(false)} size="lg">
         <Modal.Header closeButton>
-          <Modal.Title>Tạo biên bản cuộc họp</Modal.Title>
+          <Modal.Title>Tạo thống nhất cuộc họp</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form>
-            <Form.Group className="mb-3">
-              <Form.Label>Tiêu đề biên bản *</Form.Label>
-              <Form.Control
+            <Box className="mb-3">
+              <Typography variant="body2">Tiêu đề thống nhất *</Typography>
+              <TextField
                 type="text"
                 value={formData.title}
                 onChange={(e) => setFormData({...formData, title: e.target.value})}
-                placeholder="Nhập tiêu đề biên bản..."
+                placeholder="Nhập tiêu đề thống nhất..."
                 isInvalid={formData.title.trim().length > 0 && (formData.title.trim().length < 3 || formData.title.trim().length > 200)}
                 isValid={formData.title.trim().length >= 3 && formData.title.trim().length <= 200}
               />
               <Form.Text className={`${formData.title.trim().length < 3 || formData.title.trim().length > 200 ? 'text-danger' : 'text-muted'}`}>
                 {formData.title.length}/200 ký tự (tối thiểu 3 ký tự)
               </Form.Text>
-            </Form.Group>
+            </Box>
 
-            <Form.Group className="mb-3">
-              <Form.Label>Nội dung biên bản *</Form.Label>
-              <Form.Control
+            <Box className="mb-3">
+              <Typography variant="body2">Nội dung thống nhất *</Typography>
+              <TextField
                 as="textarea"
                 rows={6}
                 value={formData.content}
                 onChange={(e) => setFormData({...formData, content: e.target.value})}
-                placeholder="Nhập nội dung chi tiết của biên bản..."
+                placeholder="Nhập nội dung chi tiết của thống nhất..."
                 isInvalid={formData.content.trim().length > 0 && (formData.content.trim().length < 10 || formData.content.trim().length > 10000)}
                 isValid={formData.content.trim().length >= 10 && formData.content.trim().length <= 10000}
               />
               <Form.Text className={`${formData.content.trim().length < 10 || formData.content.trim().length > 10000 ? 'text-danger' : 'text-muted'}`}>
                 {formData.content.length}/10.000 ký tự (tối thiểu 10 ký tự)
               </Form.Text>
-            </Form.Group>
+            </Box>
 
-            <Form.Group className="mb-3">
-              <Form.Label>Hạn chót bỏ phiếu</Form.Label>
-              <Form.Control
+            <Box className="mb-3">
+              <Typography variant="body2">Hạn chót bỏ phiếu</Typography>
+              <TextField
                 type="datetime-local"
                 value={formData.voteDeadline}
                 onChange={(e) => setFormData({...formData, voteDeadline: e.target.value})}
@@ -718,7 +753,7 @@ const MinutesContent = ({ meetingId, user }) => {
               <Form.Text className="text-muted">
                 Để trống sẽ tự động đặt hạn 24 giờ kể từ bây giờ
               </Form.Text>
-            </Form.Group>
+            </Box>
           </Form>
         </Modal.Body>
         <Modal.Footer>
@@ -737,7 +772,7 @@ const MinutesContent = ({ meetingId, user }) => {
               formData.content.trim().length > 10000
             }
           >
-            Tạo biên bản
+            Tạo thống nhất
           </Button>
         </Modal.Footer>
       </Modal>
@@ -745,12 +780,12 @@ const MinutesContent = ({ meetingId, user }) => {
       {/* Vote Modal */}
       <Modal show={showVoteModal} onHide={() => setShowVoteModal(false)}>
         <Modal.Header closeButton>
-          <Modal.Title>{userVote ? 'Cập nhật phiếu bầu' : 'Bỏ phiếu biên bản'}</Modal.Title>
+          <Modal.Title>{userVote ? 'Cập nhật phiếu bầu' : 'Bỏ phiếu thống nhất'}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form>
-            <Form.Group className="mb-3">
-              <Form.Label>Lựa chọn của bạn *</Form.Label>
+            <Box className="mb-3">
+              <Typography variant="body2">Lựa chọn của bạn *</Typography>
               <div>
                 <Form.Check
                   type="radio"
@@ -782,22 +817,22 @@ const MinutesContent = ({ meetingId, user }) => {
                   onChange={(e) => setVoteData({...voteData, voteType: e.target.value})}
                 />
               </div>
-            </Form.Group>
+            </Box>
 
-            <Form.Group className="mb-3">
-              <Form.Label>Ý kiến của bạn (tùy chọn)</Form.Label>
-              <Form.Control
+            <Box className="mb-3">
+              <Typography variant="body2">Ý kiến của bạn (tùy chọn)</Typography>
+              <TextField
                 as="textarea"
                 rows={3}
                 value={voteData.comment}
                 onChange={(e) => setVoteData({...voteData, comment: e.target.value})}
-                placeholder="Nhập ý kiến của bạn về biên bản này..."
+                placeholder="Nhập ý kiến của bạn về thống nhất này..."
                 maxLength={1000}
               />
               <Form.Text className="text-muted">
                 {voteData.comment.length}/1000 ký tự
               </Form.Text>
-            </Form.Group>
+            </Box>
           </Form>
         </Modal.Body>
         <Modal.Footer>
@@ -817,7 +852,7 @@ const MinutesContent = ({ meetingId, user }) => {
       {/* Export Modal */}
       <Modal show={showExportModal} onHide={() => setShowExportModal(false)}>
         <Modal.Header closeButton>
-          <Modal.Title>Xuất biên bản</Modal.Title>
+          <Modal.Title>Xuất thống nhất</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <p>Chọn định dạng file muốn xuất:</p>
@@ -857,7 +892,7 @@ const MinutesContent = ({ meetingId, user }) => {
         <Modal.Body>
           <div className="mb-3">
             <p className="mb-2">
-              <strong>Bạn có chắc chắn muốn đóng bỏ phiếu cho biên bản này?</strong>
+              <strong>Bạn có chắc chắn muốn đóng bỏ phiếu cho thống nhất này?</strong>
             </p>
             <p className="text-muted mb-3">
               Sau khi đóng, không ai có thể bỏ phiếu hoặc thay đổi phiếu bầu nữa. 

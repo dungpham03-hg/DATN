@@ -16,7 +16,7 @@ router.get('/', authenticateToken, async (req, res) => {
     }
     
     const notifications = await Notification.find(query)
-      .populate('sender', 'fullName email avatar')
+      .populate('sender', 'fullName email avatar position')
       .populate('data.meetingId', 'title startTime location')
       .sort({ createdAt: -1 })
       .limit(limit * 1)

@@ -1,7 +1,12 @@
 import React, { useEffect, useContext, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthContext } from '../../contexts/AuthContext';
-import { Box, CircularProgress, Typography, Alert } from '@mui/material';
+import {
+  Box,
+  CircularProgress,
+  Typography,
+  Alert
+} from '@mui/material';
 
 const OAuthCallback = () => {
   const [searchParams] = useSearchParams();
