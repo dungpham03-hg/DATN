@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const passport = require('passport');
 const path = require('path');
+const fs = require('fs');
 const http = require('http');
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
@@ -91,17 +92,26 @@ app.use('/api/archives', require('./routes/archives'));
 app.use('/api/protocols', require('./routes/protocols'));
 app.use('/api/users', require('./routes/users'));
 
-// Serve static files from the React app
-app.use(express.static(path.join(__dirname, '../client/build')));
-
 // Serve uploaded files
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+const uploadPath = process.env.UPLOAD_PATH || 'uploads';
+app.use('/uploads', express.static(path.join(__dirname, uploadPath)));
 
-// The "catchall" handler: for any request that doesn't
-// match one above, send back React's index.html file.
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/build/index.html'));
-});
+// Serve static files from the React app (only if build folder exists)
+const buildPath = path.join(__dirname, '../client/build');
+if (fs.existsSync(buildPath)) {
+  app.use(express.static(buildPath));
+  
+  // The "catchall" handler: for any request that doesn't match API routes,
+  // send back React's index.html file.
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(buildPath, 'index.html'));
+  });
+} else {
+  // If no build folder (separate deployment), just handle API routes
+  app.get('*', (req, res) => {
+    res.status(404).json({ message: 'API endpoint not found' });
+  });
+}
 
 // Error handling middleware
 app.use((err, req, res, next) => {
