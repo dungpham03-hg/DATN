@@ -7,31 +7,49 @@ const authenticateToken = async (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
+    console.log('🔍 Auth Debug:', {
+      hasAuthHeader: !!authHeader,
+      hasToken: !!token,
+      tokenLength: token ? token.length : 0,
+      endpoint: req.path
+    });
+
     if (!token) {
+      console.log('❌ No token provided');
       return res.status(401).json({ 
         message: 'Access token không tồn tại' 
       });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('✅ Token decoded successfully:', { userId: decoded.userId });
     
     try {
       // Tìm user và kiểm tra xem còn active không
       const user = await User.findById(decoded.userId).select('-password');
+      console.log('🔍 User found:', user ? 'Yes' : 'No');
       
       if (user && user.isActive) {
         req.user = user;
+        console.log('✅ User authenticated:', user.email, user.role);
       } else {
         // Fallback cho demo mode - chỉ set userId
         req.user = decoded.userId;
+        console.log('⚠️ Using demo mode, userId:', decoded.userId);
       }
     } catch (dbError) {
       // MongoDB không kết nối được - dùng demo mode
-      console.log('MongoDB not connected, using demo mode');
+      console.log('⚠️ MongoDB not connected, using demo mode:', dbError.message);
       req.user = decoded.userId;
     }
     next();
   } catch (error) {
+    console.error('❌ Auth middleware error:', {
+      name: error.name,
+      message: error.message,
+      endpoint: req.path
+    });
+    
     if (error.name === 'JsonWebTokenError') {
       return res.status(401).json({ 
         message: 'Token không hợp lệ' 
@@ -43,7 +61,6 @@ const authenticateToken = async (req, res, next) => {
       });
     }
     
-    console.error('Auth middleware error:', error);
     return res.status(500).json({ 
       message: 'Lỗi server khi xác thực' 
     });

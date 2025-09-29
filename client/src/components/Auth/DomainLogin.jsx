@@ -27,16 +27,34 @@ const DomainLogin = ({ onSuccess }) => {
   // Domain role mapping for display
   const getDomainRole = (email) => {
     const domain = email.split('@')[1];
-    if (domain === 'st.phenikaa-uni.edu.vn') return {
-      role: 'Sinh viên',
+    
+    // Doanh nghiệp giả lập
+    if (domain === 'ep.techcorp.vn') return {
+      role: 'Nhân viên',
       color: 'primary',
       icon: <Person />
     };
-    if (domain === 'phenikaa-uni.edu.vn') return {
-      role: 'Giảng viên',
+    if (domain === 'ma.techcorp.vn') return {
+      role: 'Trưởng phòng',
       color: 'secondary',
       icon: <Security />
     };
+    if (domain === 'st.techcorp.vn') return {
+      role: 'Thư ký',
+      color: 'info',
+      icon: <Person />
+    };
+    if (domain === 'te.techcorp.vn') return {
+      role: 'Kỹ thuật viên',
+      color: 'success',
+      icon: <Security />
+    };
+    if (domain === 'ad.techcorp.vn') return {
+      role: 'Quản trị viên',
+      color: 'error',
+      icon: <Security />
+    };
+    
     return null;
   };
 
@@ -125,25 +143,25 @@ const DomainLogin = ({ onSuccess }) => {
         <Box textAlign="center" mb={3}>
           <School sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
           <Typography variant="h5" component="h1" gutterBottom>
-            Đăng nhập với Email trường
+            Đăng nhập với Email công ty
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Sử dụng email trường để đăng nhập và tự động phân quyền
+            Sử dụng email công ty để đăng nhập và tự động phân quyền
           </Typography>
         </Box>
 
         <form onSubmit={handleSubmit}>
           <TextField
             fullWidth
-            label="Email trường"
+            label="Email công ty"
             type="email"
             value={email}
             onChange={handleEmailChange}
-            placeholder="example@st.phenikaa-uni.edu.vn"
+            placeholder="example@ep.techcorp.vn"
             required
             margin="normal"
             disabled={loading}
-            helperText="Nhập email có đuôi @st.phenikaa-uni.edu.vn hoặc @phenikaa-uni.edu.vn"
+            helperText="Nhập email có đuôi @ep.techcorp.vn (nhân viên), @ma.techcorp.vn (manager), @ad.techcorp.vn (admin), v.v."
           />
 
           {validating && (
@@ -204,7 +222,7 @@ const DomainLogin = ({ onSuccess }) => {
             sx={{ mt: 3, mb: 2 }}
             startIcon={loading ? <CircularProgress size={20} /> : <School />}
           >
-            {loading ? 'Đang đăng nhập...' : 'Đăng nhập với Email trường'}
+            {loading ? 'Đang đăng nhập...' : 'Đăng nhập với Email công ty'}
           </Button>
         </form>
 

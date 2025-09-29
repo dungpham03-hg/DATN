@@ -158,7 +158,7 @@ const Login = () => {
           >
             <Tab 
               icon={<SchoolIcon />} 
-              label="Email trường" 
+              label="Email công ty" 
               iconPosition="start"
             />
             <Tab 

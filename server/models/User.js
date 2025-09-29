@@ -41,7 +41,11 @@ const userSchema = new mongoose.Schema({
     validate: {
       validator: function(domain) {
         if (!domain) return true; // Optional field
-        const allowedDomains = ['st.phenikaa-uni.edu.vn', 'phenikaa-uni.edu.vn'];
+        const allowedDomains = [
+          'ep.techcorp.vn', 'ma.techcorp.vn',
+          'st.techcorp.vn', 'te.techcorp.vn',
+          'ad.techcorp.vn'
+        ];
         return allowedDomains.includes(domain);
       },
       message: 'Domain email không được hỗ trợ'

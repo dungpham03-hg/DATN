@@ -5,25 +5,27 @@
 
 // Domain to Role Mapping
 export const DOMAIN_ROLE_MAPPING = {
-  // Sinh viên
-  'st.phenikaa-uni.edu.vn': {
+  // === DOANH NGHIỆP GIẢ LẬP ===
+  
+  // Nhân viên thông thường
+  'ep.techcorp.vn': {
     role: 'employee',
-    department: 'Sinh viên',
-    position: 'Sinh viên',
+    department: 'Nhân viên',
+    position: 'Nhân viên',
     permissions: [
       'view_meetings',
       'join_meetings',
       'view_minutes',
       'view_protocols'
     ],
-    description: 'Sinh viên - Quyền truy cập cơ bản'
+    description: 'Nhân viên - Quyền truy cập cơ bản'
   },
   
-  // Giảng viên
-  'phenikaa-uni.edu.vn': {
+  // Trưởng phòng/Manager
+  'ma.techcorp.vn': {
     role: 'manager',
-    department: 'Giảng viên',
-    position: 'Giảng viên',
+    department: 'Quản lý',
+    position: 'Trưởng phòng',
     permissions: [
       'create_meetings',
       'manage_meetings',
@@ -35,7 +37,63 @@ export const DOMAIN_ROLE_MAPPING = {
       'view_reports',
       'manage_attendees'
     ],
-    description: 'Giảng viên - Quyền quản lý cuộc họp'
+    description: 'Trưởng phòng - Quyền quản lý cuộc họp'
+  },
+  
+  // Thư ký
+  'st.techcorp.vn': {
+    role: 'secretary',
+    department: 'Thư ký',
+    position: 'Thư ký',
+    permissions: [
+      'create_meetings',
+      'manage_meetings',
+      'view_meetings',
+      'join_meetings',
+      'create_minutes',
+      'approve_minutes',
+      'create_protocols',
+      'view_reports',
+      'manage_attendees'
+    ],
+    description: 'Thư ký - Quyền tạo và quản lý biên bản'
+  },
+  
+  // Kỹ thuật viên
+  'te.techcorp.vn': {
+    role: 'technician',
+    department: 'Kỹ thuật',
+    position: 'Kỹ thuật viên',
+    permissions: [
+      'view_meetings',
+      'join_meetings',
+      'view_minutes',
+      'view_protocols',
+      'manage_meeting_rooms'
+    ],
+    description: 'Kỹ thuật viên - Quyền quản lý phòng họp'
+  },
+  
+  // Admin
+  'ad.techcorp.vn': {
+    role: 'admin',
+    department: 'Quản trị',
+    position: 'Quản trị viên',
+    permissions: [
+      'create_meetings',
+      'manage_meetings',
+      'view_meetings',
+      'join_meetings',
+      'create_minutes',
+      'approve_minutes',
+      'create_protocols',
+      'view_reports',
+      'manage_attendees',
+      'manage_users',
+      'manage_meeting_rooms',
+      'view_all_reports'
+    ],
+    description: 'Quản trị viên - Quyền toàn hệ thống'
   }
 };
 
@@ -43,8 +101,12 @@ export const DOMAIN_ROLE_MAPPING = {
 export const DOMAIN_VALIDATION = {
   // Các domain được phép
   allowedDomains: [
-    'st.phenikaa-uni.edu.vn',
-    'phenikaa-uni.edu.vn'
+    // Doanh nghiệp giả lập
+    'ep.techcorp.vn',
+    'ma.techcorp.vn',
+    'st.techcorp.vn',
+    'te.techcorp.vn',
+    'ad.techcorp.vn'
   ],
   
   // Bắt buộc phải thuộc domain được phép

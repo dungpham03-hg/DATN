@@ -278,6 +278,22 @@ router.post('/refresh', async (req, res) => {
   }
 });
 
+// @route   GET /api/auth/test-token
+// @desc    Test token validation
+// @access  Public
+router.get('/test-token', (req, res) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  res.json({
+    message: 'Token test endpoint',
+    hasAuthHeader: !!authHeader,
+    hasToken: !!token,
+    tokenLength: token ? token.length : 0,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // @route   GET /api/auth/me
 // @desc    Lấy thông tin user hiện tại
 // @access  Private
