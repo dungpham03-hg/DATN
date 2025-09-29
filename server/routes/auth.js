@@ -178,6 +178,7 @@ router.post('/register', registerValidation, handleValidationErrors, async (req,
 // @access  Public
 router.post('/login', loginValidation, handleValidationErrors, async (req, res) => {
   try {
+    console.log('🔍 Login request body:', req.body);
     const { email, password } = req.body;
 
     // Tìm user và include password để so sánh
@@ -839,6 +840,7 @@ router.post('/validate-domain', async (req, res) => {
 // @access  Public
 router.post('/login-with-domain', async (req, res) => {
   try {
+    console.log('🔍 Domain login request body:', req.body);
     const { email, fullName, avatar } = req.body;
     
     if (!email) {

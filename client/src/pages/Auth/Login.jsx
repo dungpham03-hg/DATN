@@ -57,7 +57,8 @@ const Login = () => {
   // Handle domain login success
   const handleDomainLoginSuccess = (data) => {
     if (login) {
-      login(data.user, data.token);
+      // Call login with token and user data
+      login(data.token, null, data.user);
       navigate('/dashboard', { replace: true });
     }
   };

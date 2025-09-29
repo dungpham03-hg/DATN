@@ -22,7 +22,7 @@ const DomainLogin = ({ onSuccess }) => {
   const [error, setError] = useState('');
   const [domainInfo, setDomainInfo] = useState(null);
   const navigate = useNavigate();
-  const { showNotification } = useNotification();
+  const { success, error: showError } = useNotification();
 
   // Domain role mapping for display
   const getDomainRole = (email) => {
@@ -68,7 +68,13 @@ const DomainLogin = ({ onSuccess }) => {
     if (value && value.includes('@')) {
       setValidating(true);
       try {
-        const response = await fetch('/api/auth/validate-domain', {
+        // Use proxy path in development, absolute URL in production
+        const API_URL = process.env.NODE_ENV === 'production' 
+          ? `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api'}/auth/validate-domain`
+          : '/api/auth/validate-domain';
+        
+        console.log('🔍 Validating domain with URL:', API_URL, 'for email:', value);
+        const response = await fetch(API_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -77,14 +83,18 @@ const DomainLogin = ({ onSuccess }) => {
         });
 
         const data = await response.json();
+        console.log('🔍 Domain validation response:', data);
         
         if (response.ok && data.isValid) {
           setDomainInfo(data);
+          setError(''); // Clear any previous errors
         } else {
           setError(data.message || 'Domain không hợp lệ');
+          setDomainInfo(null);
         }
       } catch (err) {
         console.error('Domain validation error:', err);
+        setError('Không thể kiểm tra domain. Vui lòng kiểm tra kết nối server.');
       } finally {
         setValidating(false);
       }
@@ -93,24 +103,40 @@ const DomainLogin = ({ onSuccess }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email || !domainInfo) return;
+    console.log('🔍 Submit check - email:', email, 'domainInfo:', domainInfo);
+    if (!email || !domainInfo) {
+      setError('Vui lòng nhập email hợp lệ và chờ domain được validate');
+      return;
+    }
 
     setLoading(true);
     setError('');
 
     try {
-      const response = await fetch('/api/auth/login-with-domain', {
+      // Use proxy path in development, absolute URL in production
+      const API_URL = process.env.NODE_ENV === 'production' 
+        ? `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api'}/auth/login-with-domain`
+        : '/api/auth/login-with-domain';
+      
+      const requestData = { 
+        email,
+        fullName: domainInfo.fullName || email.split('@')[0]
+      };
+      
+      console.log('🚀 Logging in with URL:', API_URL, 'for email:', email);
+      console.log('📤 Request data:', requestData);
+      
+      const response = await fetch(API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
-          email,
-          fullName: domainInfo.fullName || email.split('@')[0]
-        }),
+        body: JSON.stringify(requestData),
       });
 
+      console.log('📥 Response status:', response.status);
       const data = await response.json();
+      console.log('📥 Response data:', data);
 
       if (response.ok) {
         // Store auth data
@@ -118,7 +144,7 @@ const DomainLogin = ({ onSuccess }) => {
         localStorage.setItem('refreshToken', data.refreshToken);
         localStorage.setItem('user', JSON.stringify(data.user));
         
-        showNotification('Đăng nhập thành công!', 'success');
+        success('Đăng nhập thành công!');
         
         if (onSuccess) {
           onSuccess(data);
@@ -129,7 +155,12 @@ const DomainLogin = ({ onSuccess }) => {
         setError(data.message || 'Lỗi đăng nhập');
       }
     } catch (err) {
-      setError('Lỗi kết nối server');
+      console.error('Login error:', err);
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        setError('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
+      } else {
+        setError('Lỗi kết nối server: ' + (err.message || 'Unknown error'));
+      }
     } finally {
       setLoading(false);
     }
