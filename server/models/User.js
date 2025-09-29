@@ -35,6 +35,29 @@ const userSchema = new mongoose.Schema({
     type: String,
     sparse: true
   },
+  // Domain-based authentication fields
+  emailDomain: {
+    type: String,
+    validate: {
+      validator: function(domain) {
+        if (!domain) return true; // Optional field
+        const allowedDomains = ['st.phenikaa-uni.edu.vn', 'phenikaa-uni.edu.vn'];
+        return allowedDomains.includes(domain);
+      },
+      message: 'Domain email không được hỗ trợ'
+    }
+  },
+  autoAssignedRole: {
+    type: String,
+    enum: ['admin', 'manager', 'secretary', 'assistant', 'technician', 'employee']
+  },
+  isFromDomainAuth: {
+    type: Boolean,
+    default: false
+  },
+  domainPermissions: [{
+    type: String
+  }],
   role: {
     type: String,
     enum: ['admin', 'manager', 'secretary', 'assistant', 'technician', 'employee'],

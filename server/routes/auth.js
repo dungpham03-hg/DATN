@@ -13,6 +13,7 @@ const { OAuth2Client } = require('google-auth-library');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { DomainUtils } = require('../config/domainConfig');
 
 const router = express.Router();
 
@@ -752,16 +753,166 @@ router.get('/github/callback',
 
 // Microsoft OAuth Routes
 router.get('/microsoft',
-  passport.authenticate('microsoft', { scope: ['user.read'] })
+  passport.authenticate('microsoft', { scope: ['user.read', 'openid', 'profile', 'email'] })
 );
 
 router.get('/microsoft/callback',
   passport.authenticate('microsoft', { session: false }),
   (req, res) => {
-    const token = generateToken(req.user);
-    res.redirect(`${CLIENT_URL}/oauth/callback?token=${token}`);
+    try {
+      const token = generateToken(req.user._id);
+      const refreshToken = generateRefreshToken(req.user._id);
+      
+      // Update last login
+      req.user.lastLogin = new Date();
+      req.user.save();
+      
+      res.redirect(`${CLIENT_URL}/oauth/callback?token=${token}&refreshToken=${refreshToken}&user=${encodeURIComponent(JSON.stringify(req.user.toPublicJSON()))}`);
+    } catch (error) {
+      console.error('Microsoft callback error:', error);
+      res.redirect(`${CLIENT_URL}/login?error=microsoft_auth_failed`);
+    }
   }
 );
+
+// Domain-based Authentication Routes
+// @route   POST /api/auth/validate-domain
+// @desc    Validate email domain and return role info
+// @access  Public
+router.post('/validate-domain', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({
+        message: 'Email là bắt buộc'
+      });
+    }
+    
+    const validation = DomainUtils.validateEmailDomain(email);
+    
+    if (!validation.isValid) {
+      return res.status(400).json({
+        message: validation.error,
+        isValid: false
+      });
+    }
+    
+    res.json({
+      message: 'Domain hợp lệ',
+      isValid: true,
+      domain: validation.domain,
+      role: validation.role,
+      department: validation.department,
+      position: validation.position,
+      permissions: validation.permissions,
+      description: validation.description
+    });
+    
+  } catch (error) {
+    console.error('Domain validation error:', error);
+    res.status(500).json({
+      message: 'Lỗi server khi validate domain',
+      error: process.env.NODE_ENV === 'development' ? error.message : {}
+    });
+  }
+});
+
+// @route   POST /api/auth/login-with-domain
+// @desc    Login with domain email (for OAuth integration)
+// @access  Public
+router.post('/login-with-domain', async (req, res) => {
+  try {
+    const { email, fullName, avatar } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({
+        message: 'Email là bắt buộc'
+      });
+    }
+    
+    // Validate domain
+    const validation = DomainUtils.validateEmailDomain(email);
+    
+    if (!validation.isValid) {
+      return res.status(400).json({
+        message: validation.error
+      });
+    }
+    
+    // Find existing user
+    let user = await User.findOne({ email: email.toLowerCase() });
+    
+    if (!user) {
+      // Create new user with domain role
+      user = new User({
+        email: email.toLowerCase(),
+        fullName: fullName || email.split('@')[0],
+        role: validation.role,
+        emailDomain: validation.domain,
+        autoAssignedRole: validation.role,
+        isFromDomainAuth: true,
+        domainPermissions: validation.permissions,
+        department: validation.department,
+        position: validation.position,
+        emailVerified: true,
+        password: Math.random().toString(36).slice(-8), // Random password
+        avatar: avatar || ''
+      });
+      
+      await user.save();
+    } else {
+      // Update existing user with domain info if needed
+      if (!user.isFromDomainAuth) {
+        user.emailDomain = validation.domain;
+        user.autoAssignedRole = validation.role;
+        user.isFromDomainAuth = true;
+        user.domainPermissions = validation.permissions;
+        user.department = validation.department;
+        user.position = validation.position;
+        user.emailVerified = true;
+        
+        await user.save();
+      }
+      
+      // Update role if changed
+      if (user.autoAssignedRole !== validation.role) {
+        user.autoAssignedRole = validation.role;
+        user.role = validation.role;
+        await user.save();
+      }
+    }
+    
+    // Generate tokens
+    const token = generateToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
+    
+    // Update last login
+    user.lastLogin = new Date();
+    await user.save();
+    
+    res.json({
+      message: 'Đăng nhập thành công',
+      user: user.toPublicJSON(),
+      token,
+      refreshToken,
+      autoLogin: true,
+      domainInfo: {
+        domain: validation.domain,
+        role: validation.role,
+        department: validation.department,
+        permissions: validation.permissions
+      }
+    });
+    
+  } catch (error) {
+    console.error('Domain login error:', error);
+    res.status(500).json({
+      message: 'Lỗi server khi đăng nhập',
+      error: process.env.NODE_ENV === 'development' ? error.message : {}
+    });
+  }
+});
 
 // ===================== Google One Tap / React OAuth =====================
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;

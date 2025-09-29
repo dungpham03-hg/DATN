@@ -14,7 +14,9 @@ import {
   Divider,
   CircularProgress,
   useTheme,
-  alpha
+  alpha,
+  Tabs,
+  Tab
 } from '@mui/material';
 import {
   Email as EmailIcon,
@@ -22,10 +24,13 @@ import {
   Visibility,
   VisibilityOff,
   Login as LoginIcon,
-  GitHub as GitHubIcon
+  GitHub as GitHubIcon,
+  School as SchoolIcon,
+  Person as PersonIcon
 } from '@mui/icons-material';
 
 import { useAuth } from '../../contexts/AuthContext';
+import DomainLogin from '../../components/Auth/DomainLogin';
 
 const Login = () => {
   const theme = useTheme();
@@ -40,6 +45,7 @@ const Login = () => {
   const [error, setError] = useState(location.state?.error || '');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [tabValue, setTabValue] = useState(0);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -47,6 +53,20 @@ const Login = () => {
       navigate('/dashboard', { replace: true });
     }
   }, [isAuthenticated, navigate]);
+
+  // Handle domain login success
+  const handleDomainLoginSuccess = (data) => {
+    if (login) {
+      login(data.user, data.token);
+      navigate('/dashboard', { replace: true });
+    }
+  };
+
+  // Handle tab change
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
+    setError('');
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -126,9 +146,27 @@ const Login = () => {
               Đăng nhập
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Chào mừng bạn trở lại! Vui lòng đăng nhập để tiếp tục.
+              Chào mừng bạn trở lại! Vui lòng chọn phương thức đăng nhập.
             </Typography>
           </Box>
+
+          <Tabs
+            value={tabValue}
+            onChange={handleTabChange}
+            centered
+            sx={{ mb: 3 }}
+          >
+            <Tab 
+              icon={<SchoolIcon />} 
+              label="Email trường" 
+              iconPosition="start"
+            />
+            <Tab 
+              icon={<PersonIcon />} 
+              label="Đăng nhập thường" 
+              iconPosition="start"
+            />
+          </Tabs>
 
           {error && (
             <Alert severity="error" sx={{ mb: 3 }}>
@@ -136,7 +174,12 @@ const Login = () => {
             </Alert>
           )}
 
-          <Box component="form" onSubmit={handleSubmit}>
+          {tabValue === 0 && (
+            <DomainLogin onSuccess={handleDomainLoginSuccess} />
+          )}
+
+          {tabValue === 1 && (
+            <Box component="form" onSubmit={handleSubmit}>
             <Stack spacing={3}>
               <TextField
                 fullWidth
@@ -218,10 +261,9 @@ const Login = () => {
                 )}
               </Button>
             </Stack>
-          </Box>
 
-          {/* OAuth Section */}
-          <Stack spacing={2} sx={{ mt: 4 }}>
+            {/* OAuth Section */}
+            <Stack spacing={2} sx={{ mt: 4 }}>
             <Divider>
               <Typography variant="body2" color="text.secondary">
                 Hoặc đăng nhập với
@@ -229,6 +271,36 @@ const Login = () => {
             </Divider>
             
             <Stack spacing={2}>
+              {/* Microsoft Login Button */}
+              <Button
+                fullWidth
+                variant="outlined"
+                size="large"
+                startIcon={
+                  <Box
+                    component="img"
+                    src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg"
+                    alt="Microsoft"
+                    sx={{ width: 20, height: 20 }}
+                  />
+                }
+                onClick={() => handleOAuthLogin('microsoft')}
+                sx={{
+                  borderRadius: 2,
+                  py: 1.5,
+                  textTransform: 'none',
+                  borderColor: theme.palette.grey[300],
+                  color: theme.palette.text.primary,
+                  '&:hover': {
+                    backgroundColor: '#0078d4',
+                    borderColor: '#0078d4',
+                    color: 'white'
+                  }
+                }}
+              >
+                Đăng nhập với Microsoft
+              </Button>
+
               {/* Google Login Button */}
               <Button
                 fullWidth
@@ -282,26 +354,27 @@ const Login = () => {
                 Đăng nhập với GitHub
               </Button>
             </Stack>
-          </Stack>
+            </Stack>
 
-          <Divider sx={{ my: 3 }} />
+            <Divider sx={{ my: 3 }} />
 
-          <Box sx={{ textAlign: 'center' }}>
-            <Typography variant="body2" color="text.secondary">
-              Chưa có tài khoản?{' '}
-              <Link 
-                to="/register"
-                style={{ 
-                  color: theme.palette.primary.main,
-                  textDecoration: 'none',
-                  fontWeight: 500
-                }}
-              >
-                Đăng ký ngay
-              </Link>
-            </Typography>
-          </Box>
-
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                Chưa có tài khoản?{' '}
+                <Link 
+                  to="/register"
+                  style={{ 
+                    color: theme.palette.primary.main,
+                    textDecoration: 'none',
+                    fontWeight: 500
+                  }}
+                >
+                  Đăng ký ngay
+                </Link>
+              </Typography>
+            </Box>
+            </Box>
+          )}
 
         </Paper>
       </Container>
