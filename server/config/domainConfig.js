@@ -4,7 +4,7 @@
  */
 
 // Domain to Role Mapping
-export const DOMAIN_ROLE_MAPPING = {
+const DOMAIN_ROLE_MAPPING = {
   // === DOANH NGHIỆP GIẢ LẬP ===
   
   // Nhân viên thông thường
@@ -98,7 +98,7 @@ export const DOMAIN_ROLE_MAPPING = {
 };
 
 // Domain Validation Configuration
-export const DOMAIN_VALIDATION = {
+const DOMAIN_VALIDATION = {
   // Các domain được phép
   allowedDomains: [
     // Doanh nghiệp giả lập
@@ -120,7 +120,7 @@ export const DOMAIN_VALIDATION = {
 };
 
 // Microsoft OAuth Configuration for Domains
-export const MICROSOFT_OAUTH_CONFIG = {
+const MICROSOFT_OAUTH_CONFIG = {
   // Tenant ID cho tổ chức (nếu có)
   tenantId: process.env.MICROSOFT_TENANT_ID || 'common',
   
@@ -141,7 +141,7 @@ export const MICROSOFT_OAUTH_CONFIG = {
 };
 
 // Utility functions
-export const DomainUtils = {
+const DomainUtils = {
   /**
    * Extract domain from email
    * @param {string} email 
@@ -215,7 +215,7 @@ export const DomainUtils = {
   }
 };
 
-export default {
+module.exports = {
   DOMAIN_ROLE_MAPPING,
   DOMAIN_VALIDATION,
   MICROSOFT_OAUTH_CONFIG,
