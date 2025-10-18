@@ -7,7 +7,7 @@ services:
   # Backend API Server
   server:
     build:
-      context: ./server
+      context: ../../server
       dockerfile: Dockerfile
     container_name: datn-server
     restart: unless-stopped
@@ -58,7 +58,7 @@ services:
   # Frontend React App
   client:
     build:
-      context: ./client
+      context: ../../client
       dockerfile: Dockerfile
       args:
         NODE_ENV: production

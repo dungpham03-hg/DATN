@@ -1,0 +1,56 @@
+# Prometheus configuration for Meeting Management App
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "rules/*.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Node Exporter for system metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 30s
+
+  # Application metrics
+  - job_name: 'meeting-app-backend'
+    static_configs:
+      - targets: ['server:5000']
+    metrics_path: '/api/metrics'
+    scrape_interval: 30s
+
+  # Docker metrics
+  - job_name: 'docker'
+    static_configs:
+      - targets: ['localhost:9323']
+    scrape_interval: 30s
+
+  # Nginx metrics (if nginx-prometheus-exporter is used)
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx-exporter:9113']
+    scrape_interval: 30s
+
+  # Redis metrics
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    scrape_interval: 30s
+
+  # MongoDB metrics (if mongodb-exporter is used)
+  - job_name: 'mongodb'
+    static_configs:
+      - targets: ['mongodb-exporter:9216']
+    scrape_interval: 30s

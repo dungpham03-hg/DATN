@@ -20,6 +20,11 @@ const router = express.Router();
 // Thêm hằng CLIENT_URL (cho phép fallback về localhost:3000 khi biến môi trường không thiết lập)
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:3000';
 
+// Health check
+router.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
 // Cấu hình multer cho upload avatar
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {

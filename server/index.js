@@ -73,27 +73,35 @@ app.use(express.json({ limit: '500mb' }));
 app.use(express.urlencoded({ limit: '500mb', extended: true }));
 app.use(passport.initialize());
 
-// Connect to MongoDB với cấu hình SSL/TLS phù hợp
-const mongoOptions = {
-  serverSelectionTimeoutMS: 30000,
-  socketTimeoutMS: 45000,
-  maxPoolSize: 10,
-  retryWrites: true,
-  w: 'majority',
-  // Cấu hình TLS để tránh lỗi SSL
-  tls: true,
-  tlsAllowInvalidCertificates: true,
-  tlsAllowInvalidHostnames: true
-};
+// Connect to MongoDB (TLS off cho DB nội bộ Docker)
+const isAtlas = (process.env.MONGODB_URI || '').startsWith('mongodb+srv://');
+
+const mongoOptions = isAtlas
+  ? {
+      serverSelectionTimeoutMS: 30000,
+      socketTimeoutMS: 45000,
+      maxPoolSize: 10,
+      retryWrites: true,
+      w: 'majority',
+      tls: true
+    }
+  : {
+      serverSelectionTimeoutMS: 30000,
+      socketTimeoutMS: 45000,
+      maxPoolSize: 10,
+      retryWrites: true,
+      w: 'majority',
+      tls: false
+    };
 
 mongoose.connect(process.env.MONGODB_URI, mongoOptions)
   .then(() => {
     console.log('✅ Connected to MongoDB successfully');
-    // Test connection bằng cách tạo một simple query
-    return mongoose.connection.db.admin().ping();
-  })
-  .then(() => {
-    console.log('✅ MongoDB ping successful - Database ready!');
+    // Bỏ bước ping trực tiếp vì đôi khi mongoose.connection.db chưa sẵn sàng ngay
+    // Nếu cần kiểm tra sau, có thể lắng nghe sự kiện 'open'
+    mongoose.connection.once('open', () => {
+      console.log('✅ MongoDB connection is open');
+    });
   })
   .catch(err => {
     console.error('❌ MongoDB connection error:', err.message);
@@ -117,6 +125,11 @@ mongoose.connect(process.env.MONGODB_URI, mongoOptions)
   });
 
 // Routes
+// Lightweight health endpoint to avoid any router issues
+app.get('/api/auth/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/meetings', require('./routes/meetings'));
 app.use('/api/minutes', require('./routes/minutes'));
@@ -444,6 +457,6 @@ cron.schedule('0 2 * * *', async () => {
 
 // Start server
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on port ${PORT}`);
-}); 
+});

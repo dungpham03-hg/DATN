@@ -1,42 +1,65 @@
-# Use Node.js 18 Alpine image
-FROM node:18-alpine
+# Multi-stage build for Node.js backend - Optimized for VPS
+FROM node:18-alpine AS dependencies
+
+# Install dumb-init for proper signal handling
+RUN apk add --no-cache dumb-init
 
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies for native modules
 RUN apk add --no-cache \
     python3 \
     make \
     g++ \
     && rm -rf /var/cache/apk/*
 
-# Copy package files
+# Copy package files first for better Docker layer caching
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production && npm cache clean --force
+# Install dependencies with optimizations
+RUN npm ci --only=production --silent --no-audit --no-fund && \
+    npm cache clean --force
 
-# Copy source code
-COPY . .
+# Production stage
+FROM node:18-alpine AS production
 
-# Create uploads directory
-RUN mkdir -p uploads/archives uploads/avatars uploads/meetings uploads/protocols
+# Install dumb-init and security updates
+RUN apk add --no-cache dumb-init && \
+    apk upgrade --no-cache
+
+# Set working directory
+WORKDIR /app
 
 # Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
+RUN addgroup -g 1001 -S appuser && \
+    adduser -S appuser -u 1001 -G appuser
 
-# Change ownership of the app directory
-RUN chown -R nodejs:nodejs /app
-USER nodejs
+# Copy dependencies from previous stage
+COPY --from=dependencies --chown=appuser:appuser /app/node_modules ./node_modules
+
+# Copy source code with proper ownership
+COPY --chown=appuser:appuser . .
+
+# Create uploads directory with proper permissions
+RUN mkdir -p uploads/archives uploads/avatars uploads/meetings uploads/protocols && \
+    chown -R appuser:appuser uploads && \
+    chmod -R 755 uploads
+
+# Set environment variables for production
+ENV NODE_ENV=production
+ENV NODE_OPTIONS="--max-old-space-size=512"
+
+# Switch to non-root user
+USER appuser
 
 # Expose port
 EXPOSE 5000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+# Enhanced health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD node -e "require('http').get('http://localhost:5000/api/auth/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"
 
-# Start the application
-CMD ["npm", "start"]
+# Use dumb-init for proper signal handling
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["node", "index.js"]

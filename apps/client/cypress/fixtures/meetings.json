@@ -1,0 +1,60 @@
+{
+  "success": true,
+  "data": {
+    "meetings": [
+      {
+        "_id": "507f1f77bcf86cd799439012",
+        "title": "Weekly Team Meeting",
+        "description": "Weekly sync meeting for the team",
+        "startTime": "2024-01-15T10:00:00.000Z",
+        "endTime": "2024-01-15T11:00:00.000Z",
+        "location": "Conference Room A",
+        "meetingType": "offline",
+        "status": "scheduled",
+        "priority": "medium",
+        "organizer": {
+          "_id": "507f1f77bcf86cd799439011",
+          "name": "Test Admin",
+          "email": "admin@example.com"
+        },
+        "attendees": [
+          {
+            "_id": "507f1f77bcf86cd799439011",
+            "name": "Test Admin",
+            "email": "admin@example.com"
+          }
+        ],
+        "createdAt": "2024-01-10T00:00:00.000Z",
+        "updatedAt": "2024-01-10T00:00:00.000Z"
+      },
+      {
+        "_id": "507f1f77bcf86cd799439013",
+        "title": "Project Review Meeting",
+        "description": "Monthly project review",
+        "startTime": "2024-01-20T14:00:00.000Z",
+        "endTime": "2024-01-20T15:30:00.000Z",
+        "location": "Conference Room B",
+        "meetingType": "hybrid",
+        "status": "scheduled",
+        "priority": "high",
+        "organizer": {
+          "_id": "507f1f77bcf86cd799439011",
+          "name": "Test Admin",
+          "email": "admin@example.com"
+        },
+        "attendees": [
+          {
+            "_id": "507f1f77bcf86cd799439011",
+            "name": "Test Admin",
+            "email": "admin@example.com"
+          }
+        ],
+        "createdAt": "2024-01-10T00:00:00.000Z",
+        "updatedAt": "2024-01-10T00:00:00.000Z"
+      }
+    ],
+    "totalPages": 1,
+    "currentPage": 1,
+    "totalMeetings": 2
+  }
+}

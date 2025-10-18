@@ -1,39 +1,137 @@
 # Dependencies
 node_modules/
-client/node_modules/
-server/node_modules/
+*/node_modules/
 
-# Builds/Dist
+# Production builds
 client/build/
-client/.cache/
+apps/client/build/
 server/dist/
 
-# Env files
+# Environment variables
 .env
-client/.env
-server/.env
+.env.local
+.env.production
+.env.development
+deployment/environments/.env*
+!deployment/environments/*.example
 
 # Logs
+logs/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
-logs/
-*.log
+lerna-debug.log*
 
-# OS/Editor
-.DS_Store
-Thumbs.db
-.vscode/
-.idea/
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
 
-# Uploads & generated content
-server/uploads/
-
-# Coverage & test output
+# Coverage directory used by tools like istanbul
 coverage/
 *.lcov
 
-# Misc
-.tmp/
-.temporary/
+# nyc test coverage
+.nyc_output
+
+# Dependency directories
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+.parcel-cache
+
+# Next.js build output
+.next
+
+# Nuxt.js build / generate output
+.nuxt
+dist
+
+# Gatsby files
+.cache/
+public
+
+# Storybook build outputs
+.out
+.storybook-out
+
+# Temporary folders
+tmp/
+temp/
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Docker
+.dockerignore
+
+# Uploads (keep structure but ignore content)
+server/uploads/*
+!server/uploads/.gitkeep
+
+# Monitoring data
+monitoring/prometheus/data/
+monitoring/grafana/data/
+
+# Test results
+test-results/
+cypress/videos/
+cypress/screenshots/
+tests/e2e/cypress/videos/
+tests/e2e/cypress/screenshots/
+
+# Backup files
+*.backup
+*.bak
+backup-*/
+
+# SSL certificates
+*.pem
+*.key
+*.crt
+deployment/nginx/ssl/*
+!deployment/nginx/ssl/.gitkeep
+
+# Database dumps
+*.sql
+*.dump
+
+# Temporary restructure files (remove after cleanup)
+FOLDER_RESTRUCTURE_PLAN.md

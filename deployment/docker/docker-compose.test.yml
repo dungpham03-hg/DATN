@@ -1,0 +1,101 @@
+version: "3.8"
+
+services:
+  # Test MongoDB
+  mongodb-test:
+    image: mongo:7
+    container_name: datn-mongodb-test
+    environment:
+      MONGO_INITDB_DATABASE: test
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_test_data:/data/db
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.runCommand({ping: 1})"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API Server for Testing
+  server-test:
+    build:
+      context: ../../server
+      dockerfile: Dockerfile
+    container_name: datn-server-test
+    environment:
+      NODE_ENV: test
+      PORT: 5000
+      MONGODB_URI: mongodb://mongodb-test:27017/test
+      JWT_SECRET: test-secret-key
+      # Disable external services for testing
+      EMAIL_HOST: ""
+      EMAIL_PORT: ""
+      EMAIL_USER: ""
+      EMAIL_PASS: ""
+    ports:
+      - "5000:5000"
+    depends_on:
+      mongodb-test:
+        condition: service_healthy
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/api/auth/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    command: >
+      sh -c "
+        npm run seed &&
+        npm start
+      "
+
+  # Frontend for Testing
+  client-test:
+    build:
+      context: ../../client
+      dockerfile: Dockerfile
+      args:
+        REACT_APP_API_BASE_URL: http://localhost:5000/api
+    container_name: datn-client-test
+    ports:
+      - "3000:80"
+    depends_on:
+      server-test:
+        condition: service_healthy
+    networks:
+      - test-network
+
+  # Test Runner
+  test-runner:
+    image: cypress/included:13.6.0
+    container_name: datn-test-runner
+    working_dir: /e2e
+    volumes:
+      - ./client/cypress:/e2e/cypress
+      - ./client/cypress.config.js:/e2e/cypress.config.js
+    environment:
+      CYPRESS_baseUrl: http://client-test
+      CYPRESS_apiUrl: http://server-test:5000/api
+    depends_on:
+      - client-test
+      - server-test
+    networks:
+      - test-network
+    command: >
+      sh -c "
+        echo 'Waiting for services to be ready...' &&
+        sleep 30 &&
+        cypress run --config video=true,screenshotOnRunFailure=true
+      "
+
+volumes:
+  mongodb_test_data:
+
+networks:
+  test-network:
+    driver: bridge
