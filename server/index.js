@@ -40,11 +40,16 @@ const corsOptions = {
     
     const allowedOrigins = [
       'http://localhost:3000',
-      'http://localhost:3001', 
+      'http://localhost:3001',
+      'http://meeting-management.phenikaa-uni.edu.vn:3000',
+      'http://meeting-management.phenikaa-uni.edu.vn',
+      'https://meeting-management.phenikaa-uni.edu.vn',
       'https://datn-iota.vercel.app',
       'https://datn-iota-git-main-dungpham03-hg.vercel.app', // Vercel preview URLs
-      'https://datn-iota-git-*-dungpham03-hg.vercel.app'     // Vercel branch deployments
-    ];
+      'https://datn-iota-git-*-dungpham03-hg.vercel.app',     // Vercel branch deployments
+      process.env.FRONTEND_URL,  // Subdomain URL from environment
+      process.env.DOMAIN_URL      // Alternative domain URL
+    ].filter(Boolean); // Remove undefined values
     
     // Check if origin matches any allowed pattern
     const isAllowed = allowedOrigins.some(allowedOrigin => {
@@ -183,19 +188,21 @@ const io = new Server(server, {
 // Lưu io instance vào app để sử dụng trong routes
 app.set('io', io);
 
-io.use((socket, next) => {
-  try {
-    const token = socket.handshake.auth?.token || socket.handshake.headers['authorization']?.split(' ')[1];
-    if (!token) return next(new Error('Authentication error'));
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    socket.userId = decoded.userId;
-    next();
-  } catch (err) {
-    next(new Error('Authentication error'));
-  }
-});
+// Socket.io setup chỉ trong production mode (không chạy trong test)
+if (process.env.NODE_ENV !== 'test' && io && typeof io.use === 'function') {
+  io.use((socket, next) => {
+    try {
+      const token = socket.handshake.auth?.token || socket.handshake.headers['authorization']?.split(' ')[1];
+      if (!token) return next(new Error('Authentication error'));
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      socket.userId = decoded.userId;
+      next();
+    } catch (err) {
+      next(new Error('Authentication error'));
+    }
+  });
 
-io.on('connection', (socket) => {
+  io.on('connection', (socket) => {
   // Join user's personal room để nhận notifications
   if (socket.userId) {
     socket.join(`user_${socket.userId}`);
@@ -241,7 +248,8 @@ io.on('connection', (socket) => {
       socket.emit('error', { message: 'Lỗi khi gửi tin nhắn' });
     }
   });
-});
+  });
+}
 
 // Cron: mỗi phút kiểm tra và cập nhật trạng thái cuộc họp
 cron.schedule('*/1 * * * *', async () => {

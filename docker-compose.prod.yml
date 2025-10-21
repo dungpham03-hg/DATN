@@ -12,6 +12,7 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
+      - /var/www/certbot:/var/www/certbot:ro
       - nginx_cache:/var/cache/nginx
       - nginx_logs:/var/log/nginx
     depends_on:
@@ -43,6 +44,8 @@ services:
       # URLs
       FRONTEND_URL: ${FRONTEND_URL}
       DOMAIN_URL: ${DOMAIN_URL}
+      CLIENT_URL: ${CLIENT_URL}
+      SERVER_URL: ${SERVER_URL}
       # Email
       EMAIL_HOST: ${EMAIL_HOST}
       EMAIL_PORT: ${EMAIL_PORT}
@@ -51,10 +54,13 @@ services:
       # OAuth
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL}
       GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
       GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
+      GITHUB_CALLBACK_URL: ${GITHUB_CALLBACK_URL}
       MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID}
       MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET}
+      MICROSOFT_REDIRECT_URI: ${MICROSOFT_REDIRECT_URI}
     expose:
       - "5000"
     volumes:

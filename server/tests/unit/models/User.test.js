@@ -11,19 +11,19 @@ describe('User Model', () => {
       const savedUser = await user.save();
       
       expect(savedUser._id).toBeDefined();
-      expect(savedUser.name).toBe(userData.name);
+      expect(savedUser.fullName).toBe(userData.fullName);
       expect(savedUser.email).toBe(userData.email);
       expect(savedUser.role).toBe(userData.role);
       expect(savedUser.isActive).toBe(true);
     });
 
-    it('should require name field', async () => {
+    it('should require fullName field', async () => {
       const userData = { ...testUsers.admin };
-      delete userData.name;
+      delete userData.fullName;
       
       const user = new User(userData);
       
-      await expect(user.save()).rejects.toThrow('Tên là bắt buộc');
+      await expect(user.save()).rejects.toThrow('Họ tên là bắt buộc');
     });
 
     it('should require email field', async () => {
@@ -97,15 +97,15 @@ describe('User Model', () => {
       await expect(user.save()).rejects.toThrow('Mật khẩu phải có ít nhất 6 ký tự');
     });
 
-    it('should validate name length', async () => {
+    it('should validate fullName length', async () => {
       const userData = {
         ...testUsers.admin,
-        name: 'A'.repeat(101) // Too long
+        fullName: 'A'.repeat(101) // Too long
       };
       
       const user = new User(userData);
       
-      await expect(user.save()).rejects.toThrow('Tên không được vượt quá 100 ký tự');
+      await expect(user.save()).rejects.toThrow('Họ tên không được vượt quá 100 ký tự');
     });
   });
 

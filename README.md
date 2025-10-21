@@ -65,7 +65,13 @@ npm run docker:logs
 
 ## 📖 Documentation
 
+### Phenikaa University Deployment
+- **⚡ [Phenikaa Quick Start](PHENIKAA_QUICK_START.md)** - Setup nhanh 3 bước ⭐ NEW
+- **🎓 [Phenikaa Domain Setup](SETUP_PHENIKAA_DOMAIN.md)** - Hướng dẫn chi tiết
+
+### General Documentation
 - **🚀 [Deployment Guide](docs/deployment/VPS_DEPLOYMENT_GUIDE.md)** - Deploy lên VPS
+- **🌐 [Subdomain Setup](SUBDOMAIN_QUICK_START.md)** - Cấu hình subdomain cho VPS
 - **🧪 [Testing Guide](docs/testing/TESTING_GUIDE.md)** - Quy trình kiểm thử
 - **💻 [Development Guide](docs/development/DEVELOPMENT_GUIDE.md)** - Setup development
 

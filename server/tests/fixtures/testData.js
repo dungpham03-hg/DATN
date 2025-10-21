@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 // Test user data
 const testUsers = {
   admin: {
-    name: 'Admin User',
+    fullName: 'Admin User',
     email: 'admin@example.com',
     password: 'admin123',
     role: 'admin',
@@ -11,7 +11,7 @@ const testUsers = {
     isActive: true
   },
   manager: {
-    name: 'Manager User',
+    fullName: 'Manager User',
     email: 'manager@example.com',
     password: 'manager123',
     role: 'manager',
@@ -19,7 +19,7 @@ const testUsers = {
     isActive: true
   },
   secretary: {
-    name: 'Secretary User',
+    fullName: 'Secretary User',
     email: 'secretary@example.com',
     password: 'secretary123',
     role: 'secretary',
@@ -27,7 +27,7 @@ const testUsers = {
     isActive: true
   },
   assistant: {
-    name: 'Assistant User',
+    fullName: 'Assistant User',
     email: 'assistant@example.com',
     password: 'assistant123',
     role: 'assistant',
@@ -35,7 +35,7 @@ const testUsers = {
     isActive: true
   },
   technician: {
-    name: 'Technician User',
+    fullName: 'Technician User',
     email: 'technician@example.com',
     password: 'technician123',
     role: 'technician',
