@@ -2966,6 +2966,49 @@ export const MinutesViewDialog = ({ open, onClose, minutes, meetingId, apiBaseUr
               </Box>
             )}
 
+            {/* Multiple attachments (minutesHistory array) */}
+            {Array.isArray(minutes.attachments) && minutes.attachments.length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Các file đính kèm:</Typography>
+                <Stack spacing={1}>
+                  {minutes.attachments.map((att, idx) => (
+                    <Stack key={att._id || idx} direction="row" spacing={1} alignItems="center">
+                      <AttachmentIcon fontSize="small" />
+                      <Link
+                        href={`${apiBaseUrl}/meetings/${meetingId}/minutes/${minutes._id}/attachments/${att._id || att.id}/view`}
+                        target="_blank"
+                        rel="noreferrer"
+                        sx={{ textDecoration: 'none' }}
+                      >
+                        <Typography variant="body1" fontWeight={500} color="primary" noWrap title={att.name}>
+                          {att.name}
+                        </Typography>
+                      </Link>
+                      <Typography variant="caption" color="text.secondary">
+                        ({formatFileSize(att.size)})
+                      </Typography>
+                      <Tooltip title="Tải xuống">
+                        <IconButton
+                          size="small"
+                          onClick={() => {
+                            const a = document.createElement('a');
+                            a.href = `${apiBaseUrl}/meetings/${meetingId}/minutes/${minutes._id}/attachments/${att._id || att.id}/download`;
+                            a.download = att.name || 'attachment';
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                          }}
+                          sx={{ ml: 0.5 }}
+                        >
+                          <DownloadIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </Stack>
+                  ))}
+                </Stack>
+              </Box>
+            )}
+
           </Stack>
         ) : (
           <Typography>Không có dữ liệu biên bản để hiển thị.</Typography>

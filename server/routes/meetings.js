@@ -4406,6 +4406,60 @@ router.post('/:id/minutes/:minutesId/attachments', authenticateToken, upload.arr
   }
 });
 
+// View a specific minutes attachment in attachments array (inline)
+router.get('/:id/minutes/:minutesId/attachments/:attachmentId/view', authenticateToken, async (req, res) => {
+  try {
+    const meeting = await Meeting.findById(req.params.id);
+    if (!meeting) return res.status(404).json({ message: 'Cuộc họp không tồn tại' });
+
+    const idx = meeting.minutesHistory.findIndex(m => m._id.toString() === req.params.minutesId);
+    if (idx === -1) return res.status(404).json({ message: 'Biên bản không tồn tại' });
+
+    const items = meeting.minutesHistory[idx].attachments || [];
+    const att = items.find(a => (a._id?.toString?.() || a.id) === req.params.attachmentId);
+    if (!att) return res.status(404).json({ message: 'File đính kèm không tồn tại' });
+
+    const filePath = path.join(__dirname, '..', att.path);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ message: 'File không tồn tại trên server' });
+    }
+
+    res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(att.name || 'attachment')}`);
+    const stream = fs.createReadStream(filePath);
+    stream.pipe(res);
+  } catch (err) {
+    console.error('View minutes attachment error:', err);
+    res.status(500).json({ message: 'Lỗi server khi xem file', error: err.message });
+  }
+});
+
+// Download a specific minutes attachment in attachments array
+router.get('/:id/minutes/:minutesId/attachments/:attachmentId/download', authenticateToken, async (req, res) => {
+  try {
+    const meeting = await Meeting.findById(req.params.id);
+    if (!meeting) return res.status(404).json({ message: 'Cuộc họp không tồn tại' });
+
+    const idx = meeting.minutesHistory.findIndex(m => m._id.toString() === req.params.minutesId);
+    if (idx === -1) return res.status(404).json({ message: 'Biên bản không tồn tại' });
+
+    const items = meeting.minutesHistory[idx].attachments || [];
+    const att = items.find(a => (a._id?.toString?.() || a.id) === req.params.attachmentId);
+    if (!att) return res.status(404).json({ message: 'File đính kèm không tồn tại' });
+
+    const filePath = path.join(__dirname, '..', att.path);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ message: 'File không tồn tại trên server' });
+    }
+
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(att.name || 'attachment')}`);
+    const stream = fs.createReadStream(filePath);
+    stream.pipe(res);
+  } catch (err) {
+    console.error('Download minutes attachment error:', err);
+    res.status(500).json({ message: 'Lỗi server khi tải file', error: err.message });
+  }
+});
+
 // Open minutes attachment (download/inline)
 router.get('/:id/minutes/:minutesId/attachment/open', authenticateToken, async (req, res) => {
   try {
