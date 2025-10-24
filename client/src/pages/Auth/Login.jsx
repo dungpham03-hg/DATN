@@ -213,12 +213,10 @@ const Login = () => {
                 value={formData.password}
                 onChange={handleChange}
                 autoComplete="current-password"
+                inputProps={{
+                  'data-form-type': 'password',
+                }}
                 InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <LockIcon color="action" />
-                    </InputAdornment>
-                  ),
                   endAdornment: (
                     <InputAdornment position="end">
                       <IconButton
@@ -234,6 +232,18 @@ const Login = () => {
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     borderRadius: 2
+                  },
+                  '& input::-ms-reveal': {
+                    display: 'none'
+                  },
+                  '& input::-ms-clear': {
+                    display: 'none'
+                  },
+                  '& input::-webkit-credentials-auto-fill-button': {
+                    display: 'none'
+                  },
+                  '& input::-webkit-textfield-decoration-container': {
+                    visibility: 'visible !important'
                   }
                 }}
               />

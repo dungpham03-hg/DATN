@@ -4189,6 +4189,12 @@ router.post('/:id/minutes/:minutesId/submit', authenticateToken, async (req, res
       return res.status(400).json({ message: 'Chỉ có thể gửi duyệt biên bản ở trạng thái nháp' });
     }
 
+    // Cập nhật content nếu có trong request body
+    if (req.body.content !== undefined) {
+      console.log('📝 Updating content before submit');
+      meeting.minutesHistory[minutesIndex].content = req.body.content;
+    }
+
     meeting.minutesHistory[minutesIndex].status = 'pending';
     meeting.minutesHistory[minutesIndex].reviewer = meeting.organizer; // chủ trì
     meeting.minutesHistory[minutesIndex].submittedAt = new Date();
@@ -4436,15 +4442,31 @@ router.get('/:id/minutes/:minutesId/attachments/:attachmentId/view', authenticat
 // Download a specific minutes attachment in attachments array
 router.get('/:id/minutes/:minutesId/attachments/:attachmentId/download', authenticateToken, async (req, res) => {
   try {
+    console.log('🔧 [MINUTES ATTACHMENT DOWNLOAD] Request params:', req.params);
     const meeting = await Meeting.findById(req.params.id);
-    if (!meeting) return res.status(404).json({ message: 'Cuộc họp không tồn tại' });
+    if (!meeting) {
+      console.log('❌ Meeting not found:', req.params.id);
+      return res.status(404).json({ message: 'Cuộc họp không tồn tại' });
+    }
 
     const idx = meeting.minutesHistory.findIndex(m => m._id.toString() === req.params.minutesId);
-    if (idx === -1) return res.status(404).json({ message: 'Biên bản không tồn tại' });
+    console.log('🔍 Minutes history index:', idx);
+    if (idx === -1) {
+      console.log('❌ Minutes not found in history. Available:', meeting.minutesHistory.map(m => m._id.toString()));
+      return res.status(404).json({ message: 'Biên bản không tồn tại' });
+    }
 
     const items = meeting.minutesHistory[idx].attachments || [];
+    console.log('🔍 Attachments in minutes:', items.map(a => ({ id: a._id?.toString(), name: a.name })));
+    console.log('🔍 Looking for attachment ID:', req.params.attachmentId);
+    
     const att = items.find(a => (a._id?.toString?.() || a.id) === req.params.attachmentId);
-    if (!att) return res.status(404).json({ message: 'File đính kèm không tồn tại' });
+    if (!att) {
+      console.log('❌ Attachment not found. Available IDs:', items.map(a => a._id?.toString()));
+      return res.status(404).json({ message: 'File đính kèm không tồn tại' });
+    }
+    
+    console.log('✅ Found attachment:', att.name, 'Path:', att.path);
 
     const filePath = path.join(__dirname, '..', att.path);
     if (!fs.existsSync(filePath)) {

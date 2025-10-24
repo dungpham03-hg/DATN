@@ -294,6 +294,32 @@ const MeetingDetail = () => {
     return ['admin', 'manager', 'secretary', 'assistant'].includes(role) || isOwner;
   };
 
+  // Helper function to download file with token
+  const downloadFileWithToken = async (url, fileName) => {
+    try {
+      const response = await axios.get(url, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        responseType: 'blob'
+      });
+
+      // Create blob URL and trigger download
+      const blob = new Blob([response.data]);
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = fileName || 'download';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error('Download error:', error);
+      alert('Không thể tải file. Vui lòng thử lại.');
+    }
+  };
+
   const handleSaveMeetingLink = async () => {
     try {
       setSavingLink(true);
@@ -472,6 +498,21 @@ const MeetingDetail = () => {
     });
   };
 
+  const handleDeleteMinutes = async (minutes) => {
+    if (!minutes?._id) return;
+    
+    try {
+      await axios.delete(`${API_BASE_URL}/meetings/${id}/minutes/${minutes._id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert('Xóa biên bản thành công');
+      await fetchMeeting();
+    } catch (error) {
+      console.error('Error deleting minutes:', error);
+      alert(error.response?.data?.message || 'Không thể xóa biên bản');
+    }
+  };
+
   // Tạo/ cập nhật biên bản ngầm để lấy minutesId khi cần (không yêu cầu người dùng bấm Lưu nháp)
   const ensureMinutesId = async () => {
     if (currentMinutes?._id) return currentMinutes._id;
@@ -562,15 +603,28 @@ const MeetingDetail = () => {
           console.log("Frontend: Submitting newly created minutes.");
           console.log("Frontend: Meeting ID for submission ->", id);
           console.log("Frontend: Minutes ID for submission ->", createResponse.data.minutes._id);
-          await axios.post(`${API_BASE_URL}/meetings/${id}/minutes/${createResponse.data.minutes._id}/submit`, {}, {
+          await axios.post(`${API_BASE_URL}/meetings/${id}/minutes/${createResponse.data.minutes._id}/submit`, {
+            content: currentMinutes.content || ''
+          }, {
             headers: { Authorization: `Bearer ${token}` }
           });
         } else {
-          // Nếu đã có _id, submit trực tiếp
-          console.log("Frontend: Submitting existing minutes.");
+          // Nếu đã có _id, cập nhật content trước khi submit
+          console.log("Frontend: Updating and submitting existing minutes.");
           console.log("Frontend: Meeting ID for submission ->", id);
           console.log("Frontend: Minutes ID for submission ->", currentMinutes._id);
-          await axios.post(`${API_BASE_URL}/meetings/${id}/minutes/${currentMinutes._id}/submit`, {}, {
+          
+          // Update content trước
+          await axios.put(`${API_BASE_URL}/meetings/${id}/minutes/${currentMinutes._id}`, {
+            content: currentMinutes.content || ''
+          }, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          
+          // Sau đó submit
+          await axios.post(`${API_BASE_URL}/meetings/${id}/minutes/${currentMinutes._id}/submit`, {
+            content: currentMinutes.content || ''
+          }, {
             headers: { Authorization: `Bearer ${token}` }
           });
         }
@@ -2792,13 +2846,17 @@ const MeetingDetail = () => {
         minutes={viewMinutesModal.minutes}
         meetingId={id}
         apiBaseUrl={API_BASE_URL}
+        downloadFileWithToken={downloadFileWithToken}
+        onEdit={handleOpenMinutesDialog}
+        onDelete={handleDeleteMinutes}
+        canEdit={canEdit()}
       />
 
     </Container>
   );
 };
 
-export const MinutesViewDialog = ({ open, onClose, minutes, meetingId, apiBaseUrl }) => {
+export const MinutesViewDialog = ({ open, onClose, minutes, meetingId, apiBaseUrl, downloadFileWithToken, onEdit, onDelete, canEdit }) => {
   const theme = useTheme();
   const formatDateTime = (iso) => (iso ? dayjs(iso).format('DD/MM/YYYY HH:mm') : '—');
 
@@ -2893,16 +2951,20 @@ export const MinutesViewDialog = ({ open, onClose, minutes, meetingId, apiBaseUr
                   borderRadius: 1,
                   bgcolor: 'grey.50',
                   border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                  whiteSpace: 'pre-wrap',
                   lineHeight: 1.6,
                   fontSize: '0.9rem',
                   color: 'text.primary',
                   maxHeight: '400px',
                   overflowY: 'auto',
+                  '& p': { margin: '0 0 0.5em 0' },
+                  '& ul, & ol': { paddingLeft: '1.5em', margin: '0.5em 0' },
+                  '& h1, & h2, & h3': { margin: '0.5em 0' },
+                  '& img': { maxWidth: '100%' },
                 }}
-              >
-                {minutes.content || 'Không có nội dung.'}
-              </Box>
+                dangerouslySetInnerHTML={{ 
+                  __html: minutes.content || '<p style="color: #999;">Không có nội dung.</p>' 
+                }}
+              />
             </Box>
 
             {minutes.attachment && minutes.attachment.name && (
@@ -2936,22 +2998,11 @@ export const MinutesViewDialog = ({ open, onClose, minutes, meetingId, apiBaseUr
                     <IconButton
                       size="small"
                       onClick={() => {
-                        try {
-                          // Dùng route ưu tiên: nếu có fileId thì mở theo attachments, nếu không dùng route open của minutes
-                          const fileId = minutes.attachment._id || minutes.attachment.id;
-                          const downloadUrl = fileId
-                            ? `${apiBaseUrl}/meetings/${meetingId}/files/${fileId}/open`
-                            : `${apiBaseUrl}/meetings/${meetingId}/minutes/${minutes._id}/attachment/open`;
-                          const a = document.createElement('a');
-                          a.href = downloadUrl;
-                          a.download = minutes.attachment.name || 'attachment';
-                          document.body.appendChild(a);
-                          a.click();
-                          document.body.removeChild(a);
-                        } catch (e) {
-                          console.error('download attachment error', e);
-                          alert('Không thể tải file. Vui lòng thử lại.');
-                        }
+                        const fileId = minutes.attachment._id || minutes.attachment.id;
+                        const downloadUrl = fileId
+                          ? `${apiBaseUrl}/meetings/${meetingId}/files/${fileId}/open`
+                          : `${apiBaseUrl}/meetings/${meetingId}/minutes/${minutes._id}/attachment/open`;
+                        downloadFileWithToken(downloadUrl, minutes.attachment.name || 'attachment');
                       }}
                       sx={{
                         ml: 0.5,
@@ -2991,12 +3042,8 @@ export const MinutesViewDialog = ({ open, onClose, minutes, meetingId, apiBaseUr
                         <IconButton
                           size="small"
                           onClick={() => {
-                            const a = document.createElement('a');
-                            a.href = `${apiBaseUrl}/meetings/${meetingId}/minutes/${minutes._id}/attachments/${att._id || att.id}/download`;
-                            a.download = att.name || 'attachment';
-                            document.body.appendChild(a);
-                            a.click();
-                            document.body.removeChild(a);
+                            const downloadUrl = `${apiBaseUrl}/meetings/${meetingId}/minutes/${minutes._id}/attachments/${att._id || att.id}/download`;
+                            downloadFileWithToken(downloadUrl, att.name || 'attachment');
                           }}
                           sx={{ ml: 0.5 }}
                         >
@@ -3014,7 +3061,48 @@ export const MinutesViewDialog = ({ open, onClose, minutes, meetingId, apiBaseUr
           <Typography>Không có dữ liệu biên bản để hiển thị.</Typography>
         )}
       </DialogContent>
-      <DialogActions sx={{ p: 3, pt: 1 }}>
+      <DialogActions sx={{ p: 3, pt: 1, justifyContent: 'space-between' }}>
+        <Box>
+          {canEdit && minutes?.status === 'draft' && (
+            <>
+              <Button
+                onClick={() => {
+                  onClose();
+                  if (onEdit) onEdit(minutes);
+                }}
+                variant="outlined"
+                color="primary"
+                startIcon={<EditIcon />}
+                sx={{
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  fontWeight: 500,
+                  mr: 1,
+                }}
+              >
+                Sửa
+              </Button>
+              <Button
+                onClick={() => {
+                  if (window.confirm('Bạn có chắc chắn muốn xóa biên bản này?')) {
+                    onClose();
+                    if (onDelete) onDelete(minutes);
+                  }
+                }}
+                variant="outlined"
+                color="error"
+                startIcon={<DeleteIcon />}
+                sx={{
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  fontWeight: 500,
+                }}
+              >
+                Xóa
+              </Button>
+            </>
+          )}
+        </Box>
         <Button
           onClick={onClose}
           variant="contained"

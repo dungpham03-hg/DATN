@@ -16,7 +16,6 @@ const cron = require('node-cron');
 const User = require('./models/User');
 const { cleanupOldNotifications } = require('./utils/notificationHelper');
 
-
 // Load environment variables
 dotenv.config();
 
@@ -25,6 +24,9 @@ if (!process.env.MONGODB_URI) {
   const rootEnvPath = path.resolve(__dirname, '../.env');
   dotenv.config({ path: rootEnvPath });
 }
+
+// Load environment config
+const envConfig = require('./config/environment');
 
 // Import passport config
 require('./config/passport');
@@ -38,9 +40,18 @@ const corsOptions = {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
+    // Trong môi trường development, cho phép tất cả localhost
+    if (process.env.NODE_ENV === 'development') {
+      callback(null, true);
+      return;
+    }
+    
     const allowedOrigins = [
       'http://localhost:3000',
       'http://localhost:3001',
+      'http://localhost:5000',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:3001',
       'http://meeting-management.phenikaa-uni.edu.vn:3000',
       'http://meeting-management.phenikaa-uni.edu.vn',
       'https://meeting-management.phenikaa-uni.edu.vn',
@@ -77,6 +88,13 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: '500mb' }));
 app.use(express.urlencoded({ limit: '500mb', extended: true }));
 app.use(passport.initialize());
+
+// Security middleware (production)
+if (envConfig.isProduction) {
+  const { securityHeaders, sanitizeInput } = require('./middleware/security');
+  app.use(securityHeaders);
+  app.use(sanitizeInput);
+}
 
 // Connect to MongoDB (TLS off cho DB nội bộ Docker)
 const isAtlas = (process.env.MONGODB_URI || '').startsWith('mongodb+srv://');
@@ -135,7 +153,15 @@ app.get('/api/auth/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
+// Debug middleware to log all requests
+app.use('/api/meetings', (req, res, next) => {
+  console.log('🌐 [REQUEST]', req.method, req.path);
+  next();
+});
+
 app.use('/api/auth', require('./routes/auth'));
+// Minutes attachments TRƯỚC meetings để tránh conflict
+app.use('/api/meetings', require('./routes/minutes-attachments'));
 app.use('/api/meetings', require('./routes/meetings'));
 app.use('/api/minutes', require('./routes/minutes'));
 app.use('/api/notifications', require('./routes/notifications'));
@@ -464,7 +490,24 @@ cron.schedule('0 2 * * *', async () => {
 });
 
 // Start server
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server is running on port ${PORT}`);
+const PORT = envConfig.port;
+const HOST = envConfig.host;
+
+server.listen(PORT, HOST, () => {
+  console.log('\n' + '='.repeat(60));
+  console.log(`🚀 Meeting Management Server`);
+  console.log('='.repeat(60));
+  console.log(`📝 Environment: ${envConfig.env.toUpperCase()}`);
+  console.log(`🌐 Server: http://${HOST}:${PORT}`);
+  console.log(`💾 Database: ${envConfig.mongodb.isAtlas ? 'MongoDB Atlas' : 'MongoDB Local'}`);
+  console.log(`🔗 Frontend: ${envConfig.frontend.url}`);
+  console.log(`📁 Upload Path: ${envConfig.upload.path}`);
+  console.log(`🔐 CORS: ${envConfig.isDevelopment ? 'Development (All localhost)' : 'Production (Restricted)'}`);
+  if (envConfig.oauth.microsoft.enabled) {
+    console.log(`✅ Microsoft OAuth: Enabled`);
+  }
+  if (envConfig.email.enabled) {
+    console.log(`📧 Email: Enabled`);
+  }
+  console.log('='.repeat(60) + '\n');
 });

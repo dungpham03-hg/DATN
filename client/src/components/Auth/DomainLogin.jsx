@@ -219,7 +219,7 @@ const DomainLogin = ({ onSuccess }) => {
             </Alert>
           )}
 
-          {domainRole && (
+          {domainRole && domainRole.role && (
             <Box mt={2}>
               <Divider sx={{ mb: 2 }} />
               <Typography variant="subtitle2" gutterBottom>

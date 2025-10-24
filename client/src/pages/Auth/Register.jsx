@@ -271,12 +271,10 @@ const Register = () => {
             onChange={handleChange}
             error={!!errors.password}
             helperText={errors.password}
+            inputProps={{
+              'data-form-type': 'password',
+            }}
             InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <LockIcon color="action" />
-                </InputAdornment>
-              ),
               endAdornment: (
                 <InputAdornment position="end">
                   <IconButton
@@ -287,6 +285,11 @@ const Register = () => {
                   </IconButton>
                 </InputAdornment>
               )}}
+            sx={{
+              '& input::-ms-reveal': { display: 'none' },
+              '& input::-ms-clear': { display: 'none' },
+              '& input::-webkit-credentials-auto-fill-button': { display: 'none' }
+            }}
           />
           <TextField
             fullWidth
@@ -297,12 +300,10 @@ const Register = () => {
             onChange={handleChange}
             error={!!errors.confirmPassword}
             helperText={errors.confirmPassword}
+            inputProps={{
+              'data-form-type': 'password',
+            }}
             InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <LockIcon color="action" />
-                </InputAdornment>
-              ),
               endAdornment: (
                 <InputAdornment position="end">
                   <IconButton
@@ -313,6 +314,11 @@ const Register = () => {
                   </IconButton>
                 </InputAdornment>
               )}}
+            sx={{
+              '& input::-ms-reveal': { display: 'none' },
+              '& input::-ms-clear': { display: 'none' },
+              '& input::-webkit-credentials-auto-fill-button': { display: 'none' }
+            }}
           />
         </Stack>
       )
