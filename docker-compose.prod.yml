@@ -10,9 +10,7 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
-      - /var/www/certbot:/var/www/certbot:ro
+      - ./nginx/nginx-simple.conf:/etc/nginx/nginx.conf:ro
       - nginx_cache:/var/cache/nginx
       - nginx_logs:/var/log/nginx
     depends_on:
