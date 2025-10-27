@@ -7,10 +7,12 @@ import {
 } from '@mui/material';
 import GoogleIcon from '@mui/icons-material/Google';
 import GitHubIcon from '@mui/icons-material/GitHub';
+import config from '../../config/environment';
 
 const OAuthButtons = () => {
   const handleOAuthLogin = (provider) => {
-    window.location.href = `http://localhost:5000/api/auth/${provider}`;
+    const apiBaseUrl = config.api.baseURL.replace('/api', '');
+    window.location.href = `${apiBaseUrl}/api/auth/${provider}`;
   };
 
   return (

@@ -283,24 +283,50 @@
 }
 
 /* Dark Mode Support */
-@media (prefers-color-scheme: dark) {
-  .glass {
-    background: rgba(15, 23, 42, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-  
-  .card-modern {
-    background: rgba(15, 23, 42, 0.9);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-  }
-  
-  .input-modern {
-    background: rgba(15, 23, 42, 0.9);
-    border: 2px solid rgba(255, 255, 255, 0.1);
-    color: white;
-  }
-  
-  .loading-shimmer {
-    background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
-  }
+body[data-theme="dark"] .glass,
+[data-theme="dark"] .glass {
+  background: rgba(26, 31, 58, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+body[data-theme="dark"] .card-modern,
+[data-theme="dark"] .card-modern {
+  background: rgba(26, 31, 58, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+body[data-theme="dark"] .card-modern:hover,
+[data-theme="dark"] .card-modern:hover {
+  border-color: rgba(96, 165, 250, 0.3);
+}
+
+body[data-theme="dark"] .input-modern,
+[data-theme="dark"] .input-modern {
+  background: rgba(26, 31, 58, 0.9);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.87);
+}
+
+body[data-theme="dark"] .input-modern:focus,
+[data-theme="dark"] .input-modern:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+  background: rgba(26, 31, 58, 1);
+}
+
+body[data-theme="dark"] .loading-shimmer,
+[data-theme="dark"] .loading-shimmer {
+  background: linear-gradient(90deg, #1a1f3a 25%, #2a3550 50%, #1a1f3a 75%);
+}
+
+body[data-theme="dark"] .btn-gradient,
+[data-theme="dark"] .btn-gradient {
+  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+  box-shadow: 0 4px 15px 0 rgba(96, 165, 250, 0.25);
+}
+
+body[data-theme="dark"] .btn-gradient:hover,
+[data-theme="dark"] .btn-gradient:hover {
+  box-shadow: 0 8px 25px 0 rgba(96, 165, 250, 0.4);
 }

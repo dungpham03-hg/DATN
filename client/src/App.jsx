@@ -19,6 +19,7 @@ import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
 import Dashboard from './pages/Dashboard/Dashboard';
 import Profile from './pages/Profile/Profile';
+import Settings from './pages/Settings/Settings';
 import Meetings from './pages/Meetings/Meetings';
 import CreateMeeting from './pages/Meetings/CreateMeeting';
 import RoomApprovals from './pages/Meetings/RoomApprovals';
@@ -26,6 +27,7 @@ import ComingSoon from './components/Fallback/ComingSoon';
 import MinutesApprovals from './pages/Meetings/MinutesApprovals';
 import MeetingRooms from './pages/Meetings/MeetingRooms';
 import MeetingDetail from './pages/Meetings/MeetingDetail';
+import MeetingApprovals from './pages/Meetings/MeetingApprovals';
 import OAuthCallback from './components/OAuth/OAuthCallback';
 import Unauthorized from './pages/Errors/Unauthorized';
 import Archives from './pages/Archives/Archives';
@@ -65,6 +67,7 @@ function App() {
                     <Route element={<PrivateRoute><Layout /></PrivateRoute>}>
                       <Route path="/dashboard" element={<Dashboard />} />
                       <Route path="/profile" element={<Profile />} />
+                      <Route path="/settings" element={<Settings />} />
                       
                       {/* Meetings pages */}
                       <Route path="/meetings" element={<Meetings />} />
@@ -94,6 +97,12 @@ function App() {
                       <Route path="/meeting-rooms" element={<MeetingRooms />} />
                       
                       <Route path="/invitations" element={<Invitations />} />
+                      
+                      <Route path="/meeting-approvals" element={
+                        <RoleRoute allowedRoles={['admin','manager']}>
+                          <MeetingApprovals />
+                        </RoleRoute>
+                      } />
                       
                       <Route path="/reports" element={
                         <RoleRoute allowedRoles={['admin','manager']}>

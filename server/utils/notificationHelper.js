@@ -1,4 +1,5 @@
 const Notification = require('../models/Notification');
+const emailService = require('../services/emailService');
 
 /**
  * Gửi notification với retry mechanism và error handling
@@ -30,6 +31,11 @@ const sendNotificationWithRetry = async (io, recipients, notificationData, maxRe
         if (io) {
           io.to(`user_${recipientId.toString()}`).emit('newNotification', notification);
         }
+        
+        // Gửi email notification (async, không chặn)
+        emailService.sendMeetingNotification(notification).catch(err => {
+          console.error('Error sending email notification:', err);
+        });
         
         results.push({
           recipientId,

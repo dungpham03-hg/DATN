@@ -38,18 +38,7 @@ const userSchema = new mongoose.Schema({
   // Domain-based authentication fields
   emailDomain: {
     type: String,
-    validate: {
-      validator: function(domain) {
-        if (!domain) return true; // Optional field
-        const allowedDomains = [
-          'ep.techcorp.vn', 'ma.techcorp.vn',
-          'st.techcorp.vn', 'te.techcorp.vn',
-          'ad.techcorp.vn'
-        ];
-        return allowedDomains.includes(domain);
-      },
-      message: 'Domain email không được hỗ trợ'
-    }
+    // Validation removed to allow any domain (including OAuth providers)
   },
   autoAssignedRole: {
     type: String,

@@ -32,7 +32,7 @@ const Invitations = () => {
   const [openDeclineDialog, setOpenDeclineDialog] = useState(false);
   const [selectedMeetingId, setSelectedMeetingId] = useState(null);
   const [declineReason, setDeclineReason] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all'); // all | pending | invited | accepted | declined | tentative | attended
+  const [statusFilter, setStatusFilter] = useState('all');
   const [includePast, setIncludePast] = useState(false);
   const { token } = useAuth();
   const navigate = useNavigate();
@@ -80,7 +80,12 @@ const Invitations = () => {
       alert(`Bạn đã ${responseStatus === 'accepted' ? 'chấp nhận' : 'từ chối'} lời mời.`);
       setOpenDeclineDialog(false);
       setDeclineReason('');
-      fetchInvitations(); // Refresh danh sách
+      fetchInvitations();
+      
+      // Force refresh Dashboard
+      if (window.refreshDashboard) {
+        window.refreshDashboard();
+      }
     } catch (err) {
       console.error('Error responding to invite:', err);
       alert(`Lỗi khi phản hồi lời mời: ${err.response?.data?.message || err.message}`);

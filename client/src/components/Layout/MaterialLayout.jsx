@@ -45,13 +45,15 @@ import {
   Schedule as ScheduleIcon,
   EventNote as EventNoteIcon,
   AdminPanelSettings as AdminIcon,
-  Mail as MailIcon} from '@mui/icons-material';
+  Mail as MailIcon,
+  Search as SearchIcon} from '@mui/icons-material';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import { useGlobalLoading } from '../../contexts/GlobalLoadingContext';
 import BackdropLoading from '../BackdropLoading/MaterialBackdropLoading';
 import MaterialNotificationPopup from '../Notifications/MaterialNotificationPopup';
+import GlobalSearch from '../Search/GlobalSearch';
 
 const drawerWidth = 280;
 const miniDrawerWidth = 64;
@@ -72,6 +74,7 @@ const MaterialLayout = () => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [notificationAnchor, setNotificationAnchor] = useState(null);
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
 
@@ -142,6 +145,22 @@ const MaterialLayout = () => {
     },
   ];
 
+  // Menu items user
+  const userMenuItems = [
+    { 
+      text: 'Hồ sơ', 
+      icon: <PersonIcon />, 
+      path: '/profile',
+      color: theme.palette.primary.main
+    },
+    { 
+      text: 'Cài đặt', 
+      icon: <SettingsIcon />, 
+      path: '/settings',
+      color: theme.palette.text.secondary
+    },
+  ];
+
   // Admin menu items
   const adminMenuItems = [
     { 
@@ -149,6 +168,12 @@ const MaterialLayout = () => {
       icon: <RoomIcon />, 
       path: '/room-approvals',
       roles: ['technician']
+    },
+    { 
+      text: 'Phê duyệt cuộc họp', 
+      icon: <ScheduleIcon />, 
+      path: '/meeting-approvals',
+      roles: ['admin', 'manager']
     },
     { 
       text: 'Phê duyệt biên bản', 
@@ -236,7 +261,23 @@ const MaterialLayout = () => {
           </Typography>
 
           <Stack direction="row" spacing={1} alignItems="center">
-                         {/* Notifications */}
+            {/* Global Search */}
+            <Tooltip title="Tìm kiếm (Ctrl+K)">
+              <IconButton
+                onClick={() => setSearchOpen(true)}
+                sx={{
+                  color: 'text.secondary',
+                  '&:hover': {
+                    bgcolor: alpha(theme.palette.action.hover, 0.08),
+                    transform: 'scale(1.05)'
+                  }
+                }}
+              >
+                <SearchIcon />
+              </IconButton>
+            </Tooltip>
+
+            {/* Notifications */}
              <Tooltip title={
                isDisabled
                  ? `Thông báo (${unreadCount || 0} chưa đọc) - Socket.IO đã tắt`
@@ -846,6 +887,48 @@ const MaterialLayout = () => {
           </>
         )}
 
+        {/* User Profile Menu Items */}
+        <Box sx={{ mt: 2 }}>
+          {userMenuItems.map((item) => (
+            <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
+              <ListItemButton
+                onClick={() => handleNavigate(item.path)}
+                selected={isActivePath(item.path)}
+                sx={{
+                  borderRadius: 2,
+                  mx: 0.5,
+                  '&.Mui-selected': {
+                    bgcolor: alpha(theme.palette.primary.main, 0.08),
+                    '&:hover': {
+                      bgcolor: alpha(theme.palette.primary.main, 0.12)
+                    }
+                  }
+                }}
+              >
+                <ListItemIcon
+                  sx={{
+                    minWidth: open ? 40 : 'auto',
+                    color: isActivePath(item.path) ? item.color : 'text.secondary'
+                  }}
+                >
+                  <Tooltip title={!open ? item.text : ''} placement="right">
+                    {item.icon}
+                  </Tooltip>
+                </ListItemIcon>
+                {open && (
+                  <ListItemText 
+                    primary={item.text}
+                    primaryTypographyProps={{
+                      fontSize: '0.875rem',
+                      fontWeight: isActivePath(item.path) ? 500 : 400
+                    }}
+                  />
+                )}
+              </ListItemButton>
+            </ListItem>
+          ))}
+        </Box>
+
         {/* User Section at Bottom */}
         <Box sx={{ 
           mt: 'auto', 
@@ -950,6 +1033,12 @@ const MaterialLayout = () => {
       <BackdropLoading 
         open={isLoading}
         message={loadingText}
+      />
+
+      {/* Global Search Dialog */}
+      <GlobalSearch 
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
       />
     </Box>
   );

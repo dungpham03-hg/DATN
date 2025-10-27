@@ -385,6 +385,39 @@ router.get('/me', authenticateToken, async (req, res) => {
   }
 });
 
+// @route   PUT /api/auth/notification-settings
+// @desc    Cập nhật cài đặt thông báo
+// @access  Private
+router.put('/notification-settings', authenticateToken, async (req, res) => {
+  try {
+    const { notificationSettings } = req.body;
+    
+    if (!notificationSettings) {
+      return res.status(400).json({ message: 'Thông tin cài đặt thông báo không hợp lệ' });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user._id,
+      { notificationSettings },
+      { new: true, runValidators: true }
+    ).select('-password');
+
+    res.json({
+      success: true,
+      message: 'Cập nhật cài đặt thông báo thành công',
+      user: updatedUser
+    });
+
+  } catch (error) {
+    console.error('Update notification settings error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi server khi cập nhật cài đặt thông báo',
+      error: process.env.NODE_ENV === 'development' ? error.message : {}
+    });
+  }
+});
+
 // @route   PUT /api/auth/profile
 // @desc    Cập nhật profile người dùng
 // @access  Private
@@ -707,6 +740,11 @@ router.post('/test-register', registerValidation, handleValidationErrors, async 
 
 // Google OAuth Routes
 router.get('/google',
+  (req, res, next) => {
+    console.log('🔍 Initiating Google OAuth...');
+    console.log('📍 Request URL:', req.protocol + '://' + req.get('host') + req.originalUrl);
+    next();
+  },
   passport.authenticate('google', { 
     scope: ['profile', 'email'],
     prompt: 'select_account'
@@ -714,6 +752,25 @@ router.get('/google',
 );
 
 router.get('/google/callback',
+  (req, res, next) => {
+    console.log('🔄 Google OAuth Callback - START');
+    console.log('🔄 Query params:', JSON.stringify(req.query));
+    console.log('🔄 Full URL:', req.protocol + '://' + req.get('host') + req.originalUrl);
+    
+    if (req.query.error) {
+      console.error('❌ OAuth Error from Google:', req.query.error);
+      console.error('❌ Error description:', req.query.error_description);
+      return res.redirect(`${CLIENT_URL}/login?error=${encodeURIComponent(req.query.error_description || req.query.error)}`);
+    }
+    
+    if (!req.query.code) {
+      console.warn('⚠️  No authorization code in callback');
+    } else {
+      console.log('✅ Authorization code received');
+    }
+    
+    next();
+  },
   passport.authenticate('google', { 
     session: false, 
     failureRedirect: `${CLIENT_URL}/login?error=google_auth_failed`,
@@ -721,9 +778,28 @@ router.get('/google/callback',
   }),
   (req, res) => {
     try {
-      console.log('👤 User from Google:', req.user);
+      console.log('👤 Google Callback Handler - START');
+      console.log('👤 User object:', {
+        hasUser: !!req.user,
+        userId: req.user?._id,
+        email: req.user?.email,
+        fullName: req.user?.fullName
+      });
+      
+      // Kiểm tra req.user có tồn tại không
+      if (!req.user) {
+        console.error('❌ No user found in req.user');
+        return res.redirect(`${CLIENT_URL}/login?error=no_user_found`);
+      }
+      
+      // Kiểm tra req.user._id có tồn tại không
+      if (!req.user._id) {
+        console.error('❌ No user._id found:', req.user);
+        return res.redirect(`${CLIENT_URL}/login?error=invalid_user_data`);
+      }
+      
       const token = generateToken(req.user._id);
-      console.log('🎫 Generated token:', token);
+      console.log('🎫 Generated token:', token.substring(0, 20) + '...');
       
       // Chuyển user object thành public JSON và encode để truyền lên frontend
       const publicUser = req.user.toPublicJSON ? req.user.toPublicJSON() : req.user;
@@ -731,9 +807,11 @@ router.get('/google/callback',
       const redirectUrl = `${CLIENT_URL}/oauth/callback?token=${token}&user=${userData}`;
       
       console.log('🔄 Redirecting to:', redirectUrl);
+      console.log('✅ Google OAuth Callback - SUCCESS');
       res.redirect(redirectUrl);
     } catch (error) {
-      console.error('❌ Error in Google callback:', error);
+      console.error('❌ Error in Google callback handler:', error);
+      console.error('❌ Stack:', error.stack);
       res.redirect(`${CLIENT_URL}/login?error=token_generation_failed`);
     }
   }
@@ -1148,6 +1226,28 @@ router.delete('/remove-avatar', authenticateToken, async (req, res) => {
       error: process.env.NODE_ENV === 'development' ? error.message : {}
     });
   }
+});
+
+// Error handler for OAuth routes
+router.use((err, req, res, next) => {
+  if (err && req.path.includes('/callback')) {
+    console.error('❌ OAuth Error Handler:', err.message);
+    console.error('❌ Error Stack:', err.stack);
+    
+    // Handle specific OAuth errors
+    let errorMessage = 'Authentication failed';
+    
+    if (err.message.includes('TokenError')) {
+      errorMessage = 'Invalid OAuth credentials or callback URL mismatch';
+    } else if (err.message.includes('Unauthorized')) {
+      errorMessage = 'Google OAuth credentials are invalid or expired';
+    } else {
+      errorMessage = err.message;
+    }
+    
+    return res.redirect(`${CLIENT_URL}/login?error=${encodeURIComponent(errorMessage)}`);
+  }
+  next(err);
 });
 
 module.exports = router; 

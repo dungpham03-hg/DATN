@@ -44,6 +44,18 @@ const meetingSchema = new mongoose.Schema({
     approvedAt: { type: Date },
     note: { type: String, trim: true, maxlength: 500 }
   },
+  generalApproval: {
+    status: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected', 'not_required'],
+      default: 'not_required'
+    },
+    approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    approvedAt: { type: Date },
+    rejectedAt: { type: Date },
+    note: { type: String, trim: true, maxlength: 500 },
+    requestedAt: { type: Date, default: Date.now }
+  },
   meetingLink: {
     type: String,
     trim: true,

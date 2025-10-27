@@ -41,6 +41,41 @@ const MinutesApprovals = () => {
   const { token, user } = useAuth();
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
 
+  // Helper function to download file with token
+  const downloadFileWithToken = async (url, fileName) => {
+    if (!token) {
+      console.error('No access token available');
+      alert('Vui lòng đăng nhập lại');
+      return;
+    }
+
+    try {
+      // Check if URL contains /api already
+      const fullUrl = url.includes(API_BASE_URL) ? url : `${API_BASE_URL}${url}`;
+      
+      const response = await axios.get(fullUrl, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        responseType: 'blob'
+      });
+
+      // Create blob URL and trigger download
+      const blob = new Blob([response.data]);
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = fileName || 'download';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error('Download error:', error);
+      alert('Không thể tải file. Vui lòng thử lại.');
+    }
+  };
+
   const [loading, setLoading] = useState(true);
   const [minutes, setMinutes] = useState([]);
   const [error, setError] = useState('');
@@ -78,21 +113,40 @@ const MinutesApprovals = () => {
             headers: { Authorization: `Bearer ${token}` },
           });
           const list = (res2?.data?.minutesHistory || []).filter(x => x.status === 'pending');
-          return list.map(x => ({
-            _id: x._id,
-            title: m.title || 'Biên bản cuộc họp',
-            content: x.content,
-            meeting: { _id: m._id, title: m.title, location: m.location },
-            status: 'pending_approval',
-            createdAt: x.createdAt,
-            submittedAt: x.submittedAt,
-            reviewedAt: x.reviewedAt,
-            reviewer: x.reviewer, // đã populate
-            createdBy: x.createdBy, // đã populate
-            attachment: x.attachment,
-            metadata: { requiredVoteCount: (m?.attendees?.length || 0), receivedVoteCount: 0 },
-            __source: 'minutesHistory',
-          }));
+          return list.map(x => {
+            // Hỗ trợ cả attachment (1 file) và attachments (nhiều file)
+            let attachmentArray = [];
+            if (x.attachments && Array.isArray(x.attachments) && x.attachments.length > 0) {
+              attachmentArray = x.attachments.map(a => ({
+                name: a.name || 'Đính kèm',
+                path: a.path,
+                size: a.size
+              }));
+            } else if (x.attachment) {
+              attachmentArray = [{
+                name: x.attachment.name || 'Đính kèm',
+                path: x.attachment.path,
+                size: x.attachment.size
+              }];
+            }
+
+            return {
+              _id: x._id,
+              title: m.title || 'Biên bản cuộc họp',
+              content: x.content,
+              meeting: { _id: m._id, title: m.title, location: m.location },
+              status: 'pending_approval',
+              createdAt: x.createdAt,
+              submittedAt: x.submittedAt,
+              reviewedAt: x.reviewedAt,
+              reviewer: x.reviewer, // đã populate
+              createdBy: x.createdBy, // đã populate
+              attachment: x.attachment,
+              attachments: attachmentArray,
+              metadata: { requiredVoteCount: (m?.attendees?.length || 0), receivedVoteCount: 0 },
+              __source: 'minutesHistory',
+            };
+          });
         } catch {
           return [];
         }
@@ -136,6 +190,11 @@ const MinutesApprovals = () => {
       }
       setConfirm({ open: false, minutes: null, submitting: false });
       await fetchData();
+      
+      // Force refresh Dashboard
+      if (window.refreshDashboard) {
+        window.refreshDashboard();
+      }
     } catch (e) {
       setConfirm(prev => ({ ...prev, submitting: false }));
       setError(e?.response?.data?.message || 'Phê duyệt thất bại');
@@ -152,6 +211,11 @@ const MinutesApprovals = () => {
       });
       setRejectDlg({ open: false, minutes: null, submitting: false });
       await fetchData();
+      
+      // Force refresh Dashboard
+      if (window.refreshDashboard) {
+        window.refreshDashboard();
+      }
     } catch (e) {
       setRejectDlg(prev => ({ ...prev, submitting: false }));
       setError(e?.response?.data?.message || 'Từ chối thất bại');
@@ -275,7 +339,7 @@ const MinutesApprovals = () => {
                   protocol={{
                     ...item,
                     secretary: item.createdBy || item.secretary,
-                    attachments: item.attachment ? [{ name: item.attachment.name || 'Đính kèm', path: item.attachment.path }] : []
+                    attachments: item.attachments || []
                   }}
                   onView={() => setViewModal({ open: true, minutes: item })}
                   onApprove={() => setConfirm({ open: true, minutes: item, submitting: false })}
@@ -295,6 +359,9 @@ const MinutesApprovals = () => {
         open={viewModal.open}
         onClose={() => setViewModal({ open: false, minutes: null })}
         minutes={viewModal.minutes}
+        meetingId={viewModal.minutes?.meeting?._id}
+        apiBaseUrl={API_BASE_URL}
+        downloadFileWithToken={downloadFileWithToken}
       />
 
       {/* Xác nhận phê duyệt */}

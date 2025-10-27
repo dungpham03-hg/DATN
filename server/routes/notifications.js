@@ -17,10 +17,24 @@ router.get('/', authenticateToken, async (req, res) => {
     
     const notifications = await Notification.find(query)
       .populate('sender', 'fullName email avatar position')
-      .populate('data.meetingId', 'title startTime location')
       .sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
+    
+    // Populate meeting data if exists (safely)
+    for (const notif of notifications) {
+      if (notif.data && notif.data.meetingId) {
+        try {
+          const Meeting = require('../models/Meeting');
+          const meeting = await Meeting.findById(notif.data.meetingId).select('title startTime location');
+          if (meeting) {
+            notif.data.meeting = meeting;
+          }
+        } catch (err) {
+          console.error('Error populating meeting data:', err);
+        }
+      }
+    }
     
     const total = await Notification.countDocuments(query);
     const unreadCount = await Notification.countDocuments({ 

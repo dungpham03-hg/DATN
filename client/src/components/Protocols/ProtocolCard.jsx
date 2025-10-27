@@ -218,8 +218,22 @@ const ProtocolCard = ({
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
-                        color: 'text.primary'
+                        color: 'text.primary',
+                        cursor: 'pointer'
                       }}
+                      onClick={() => {
+                        if (attachment.path) {
+                          if (attachment.path.startsWith('http://') || attachment.path.startsWith('https://')) {
+                            window.open(attachment.path, '_blank');
+                          } else {
+                            // Nếu là relative path, thêm API base URL
+                            const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
+                            const downloadUrl = `${API_BASE_URL}${attachment.path.startsWith('/') ? '' : '/'}${attachment.path}`;
+                            window.open(downloadUrl, '_blank');
+                          }
+                        }
+                      }}
+                      title="Nhấn để mở/tải file"
                     >
                       {attachment.name}
                     </Typography>
@@ -227,6 +241,32 @@ const ProtocolCard = ({
                       <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
                         {(attachment.size / 1024 / 1024).toFixed(1)}MB
                       </Typography>
+                    )}
+                    {attachment.path && (
+                      <Tooltip title="Tải file" placement="top">
+                        <IconButton 
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (attachment.path.startsWith('http://') || attachment.path.startsWith('https://')) {
+                              window.open(attachment.path, '_blank');
+                            } else {
+                              // Nếu là relative path, thêm API base URL
+                              const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
+                              const downloadUrl = `${API_BASE_URL}${attachment.path.startsWith('/') ? '' : '/'}${attachment.path}`;
+                              window.open(downloadUrl, '_blank');
+                            }
+                          }}
+                          sx={{ 
+                            p: 0.5,
+                            '&:hover': {
+                              bgcolor: alpha(theme.palette.primary.main, 0.1)
+                            }
+                          }}
+                        >
+                          <DownloadIcon sx={{ fontSize: 14 }} />
+                        </IconButton>
+                      </Tooltip>
                     )}
                   </Box>
                 );

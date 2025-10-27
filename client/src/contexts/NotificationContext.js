@@ -59,9 +59,19 @@ export const NotificationProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('❌ Error fetching notifications:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data
+      });
       if (error.response?.status === 401) {
         // Token expired, sẽ được xử lý bởi auth interceptor
         return;
+      }
+      // Don't show error for 404 or other client errors
+      if (error.response?.status >= 500) {
+        console.error('Server error when fetching notifications');
       }
     } finally {
       if (showLoading) setLoading(false);

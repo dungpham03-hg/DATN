@@ -18,10 +18,10 @@ body {
     BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: #f8fafc;
   font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
   text-rendering: optimizeLegibility;
   min-height: 100vh;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 code {
@@ -79,6 +79,7 @@ img {
 }
 
 /* Scrollbar styles for webkit browsers */
+/* Light mode */
 ::-webkit-scrollbar {
   width: 12px;
   height: 12px;
@@ -105,6 +106,29 @@ img {
 
 ::-webkit-scrollbar-corner {
   background: rgba(241, 245, 249, 0.5);
+}
+
+/* Dark mode scrollbar */
+body[data-theme="dark"] ::-webkit-scrollbar-track,
+[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+body[data-theme="dark"] ::-webkit-scrollbar-thumb,
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: #475569;
+  border: 2px solid rgba(30, 41, 59, 0.8);
+}
+
+body[data-theme="dark"] ::-webkit-scrollbar-thumb:hover,
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: #60a5fa;
+}
+
+body[data-theme="dark"] ::-webkit-scrollbar-corner,
+[data-theme="dark"] ::-webkit-scrollbar-corner {
+  background: rgba(30, 41, 59, 0.5);
 }
 
 /* Focus styles */

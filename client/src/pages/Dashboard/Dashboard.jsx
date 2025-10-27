@@ -27,6 +27,7 @@ import {
   alpha,
   Badge
 } from '@mui/material';
+import { useSocket } from '../../contexts/SocketContext';
 import {
   CalendarMonth as CalendarIcon,
   Groups as GroupsIcon,
@@ -44,7 +45,8 @@ import {
   TrendingUp as TrendingUpIcon,
   Pending as PendingIcon,
   Description as DescriptionIcon,
-  Person as PersonIcon} from '@mui/icons-material';
+  Person as PersonIcon,
+  Refresh as RefreshIcon} from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import axios from 'axios';
@@ -55,6 +57,7 @@ import QuickActions from '../../components/ui/quick-actions';
 const Dashboard = () => {
   const theme = useTheme();
   const { user, token, loading: authLoading } = useAuth();
+  const { socket, isConnected, connectionError } = useSocket();
   const navigate = useNavigate();
   const [stats, setStats] = useState({
     today: 0,
@@ -66,99 +69,235 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [pendingProtocols, setPendingProtocols] = useState([]);
   const [pendingInvitations, setPendingInvitations] = useState([]);
+  const [pendingMeetings, setPendingMeetings] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
 
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
 
   useEffect(() => {
     if (user && token) {
       fetchDashboardData();
+      
+      // Use polling if Socket.IO is not connected
+      const usePolling = !isConnected;
+      const pollingInterval = usePolling ? 10000 : 30000; // 10s if polling, 30s if Socket.IO working
+      
+      const interval = setInterval(() => {
+        if (usePolling || !isConnected) {
+          console.log('🔄 Polling dashboard data...');
+          fetchDashboardData();
+        }
+      }, pollingInterval);
+      
+      return () => clearInterval(interval);
     }
-  }, [user, token]);
+  }, [user, token, isConnected]);
 
-  const fetchDashboardData = async () => {
+  // Refresh when component becomes visible (user navigates back to dashboard)
+  useEffect(() => {
+    if (user && token && document.visibilityState === 'visible') {
+      fetchDashboardData();
+    }
+  }, [document.visibilityState]);
+
+  // Listen for real-time updates via Socket.IO
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleRefresh = () => {
+      console.log('🔄 Real-time update received, refreshing dashboard...');
+      fetchDashboardData();
+    };
+
+    // Listen for various update events
+    socket.on('protocolApproved', handleRefresh);
+    socket.on('protocolRejected', handleRefresh);
+    socket.on('invitationAccepted', handleRefresh);
+    socket.on('invitationDeclined', handleRefresh);
+    socket.on('meetingApproved', handleRefresh);
+    socket.on('meetingRejected', handleRefresh);
+
+    return () => {
+      socket.off('protocolApproved', handleRefresh);
+      socket.off('protocolRejected', handleRefresh);
+      socket.off('invitationAccepted', handleRefresh);
+      socket.off('invitationDeclined', handleRefresh);
+      socket.off('meetingApproved', handleRefresh);
+      socket.off('meetingRejected', handleRefresh);
+    };
+  }, [socket]);
+
+  // Expose refresh function to window for manual trigger
+  useEffect(() => {
+    window.refreshDashboard = () => {
+      console.log('🔄 Manually refreshing dashboard...');
+      fetchDashboardData();
+    };
+    return () => {
+      delete window.refreshDashboard;
+    };
+  }, []);
+
+  const fetchDashboardData = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       
       // Fetch meetings data
-      const meetingsResponse = await axios.get(`${API_BASE_URL}/meetings`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      const meetings = meetingsResponse.data.meetings || [];
-      
-      // Fetch pending protocols
-      const protRes = await axios.get(`${API_BASE_URL}/protocols?status=pending`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setPendingProtocols(protRes.data.protocols || []);
-
-      // Fetch pending invitations
       try {
-        const invitationsRes = await axios.get(`${API_BASE_URL}/meetings/invitations`, {
-          headers: { Authorization: `Bearer ${token}` }
+        const meetingsResponse = await axios.get(`${API_BASE_URL}/meetings`, {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 15000
         });
-        setPendingInvitations(invitationsRes.data.invitations || []);
+        
+        const meetings = meetingsResponse.data.meetings || [];
+        
+        // Calculate stats
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        
+        const todayMeetings = meetings.filter(meeting => {
+          const meetingDate = new Date(meeting.startTime);
+          return meetingDate >= today && meetingDate < tomorrow;
+        });
+        
+        const upcomingMeetings = meetings.filter(meeting => {
+          const meetingDate = new Date(meeting.startTime);
+          return meetingDate > now;
+        });
+        
+        const completedMeetings = meetings.filter(meeting => {
+          const meetingDate = new Date(meeting.startTime);
+          return meetingDate < now;
+        });
+        
+        setStats({
+          today: todayMeetings.length,
+          upcoming: upcomingMeetings.length,
+          completed: completedMeetings.length,
+          total: meetings.length
+        });
+        
+        // Get recent meetings
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        
+        const recent = meetings
+          .filter(meeting => {
+            const meetingDate = new Date(meeting.startTime);
+            return meetingDate >= sevenDaysAgo;
+          })
+          .sort((a, b) => new Date(b.startTime) - new Date(a.startTime))
+          .slice(0, 5);
+        
+        // Debug: Check room data in recent meetings
+        console.log('🔍 Dashboard - Recent meetings room data:', recent.map(meeting => ({
+          id: meeting._id,
+          title: meeting.title,
+          room: meeting.room,
+          location: meeting.location,
+          hasRoom: !!meeting.room,
+          roomName: meeting.room?.name
+        })));
+        
+        setRecentMeetings(recent);
       } catch (error) {
-        setPendingInvitations([]);
+        console.error('Error fetching meetings:', error);
+        setRecentMeetings([]);
+        setStats({ today: 0, upcoming: 0, completed: 0, total: 0 });
       }
       
-      // Calculate stats
-      const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      
-      const todayMeetings = meetings.filter(meeting => {
-        const meetingDate = new Date(meeting.startTime);
-        return meetingDate >= today && meetingDate < tomorrow;
-      });
-      
-      const upcomingMeetings = meetings.filter(meeting => {
-        const meetingDate = new Date(meeting.startTime);
-        return meetingDate > now;
-      });
-      
-      const completedMeetings = meetings.filter(meeting => {
-        const meetingDate = new Date(meeting.startTime);
-        return meetingDate < now;
-      });
-      
-      setStats({
-        today: todayMeetings.length,
-        upcoming: upcomingMeetings.length,
-        completed: completedMeetings.length,
-        total: meetings.length
-      });
-      
-      // Get recent meetings
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      
-      const recent = meetings
-        .filter(meeting => {
-          const meetingDate = new Date(meeting.startTime);
-          return meetingDate >= sevenDaysAgo;
-        })
-        .sort((a, b) => new Date(b.startTime) - new Date(a.startTime))
-        .slice(0, 5);
-      
-      // Debug: Check room data in recent meetings
-      console.log('🔍 Dashboard - Recent meetings room data:', recent.map(meeting => ({
-        id: meeting._id,
-        title: meeting.title,
-        room: meeting.room,
-        location: meeting.location,
-        hasRoom: !!meeting.room,
-        roomName: meeting.room?.name
-      })));
-      
-      setRecentMeetings(recent);
-      
+      // Fetch pending protocols from Minutes (minutesHistory) - they disappear after approval
+      try {
+        // Get meetings with pending minutes
+        const meetingsRes = await axios.get(`${API_BASE_URL}/meetings`, {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { limit: 1000 },
+          timeout: 10000
+        });
+        
+        const meetings = meetingsRes.data.meetings || [];
+        const pendingMinutes = [];
+        
+        meetings.forEach(meeting => {
+          if (meeting.minutesHistory && Array.isArray(meeting.minutesHistory)) {
+            const pending = meeting.minutesHistory.filter(m => 
+              m.status === 'pending' || m.status === 'pending_approval'
+            );
+            pending.forEach(min => {
+              pendingMinutes.push({
+                ...min,
+                __source: 'minutesHistory',
+                meeting: { _id: meeting._id, title: meeting.title },
+                secretary: min.createdBy,
+                createdAt: min.createdAt || new Date(),
+                updatedAt: min.updatedAt || min.createdAt || new Date()
+              });
+            });
+          }
+        });
+        
+        // Also check Protocol collection
+        try {
+          const protRes = await axios.get(`${API_BASE_URL}/protocols?status=pending`, {
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 10000
+          });
+          const protocolsFromProtocol = (protRes.data.protocols || []).filter(p => 
+            p.status === 'pending' || p.status === 'pending_approval'
+          );
+          pendingMinutes.push(...protocolsFromProtocol);
+        } catch (protError) {
+          console.error('Error fetching protocols:', protError);
+        }
+        
+        setPendingProtocols(pendingMinutes);
+      } catch (error) {
+        console.error('Error fetching minutes:', error);
+        setPendingProtocols([]);
+      }
+
+      // Fetch pending invitations (only invited status)
+      try {
+        const invitationsRes = await axios.get(`${API_BASE_URL}/meetings/invitations`, {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 10000
+        });
+        // Filter to only show truly pending invitations
+        const pendingInvites = (invitationsRes.data.invitations || []).filter(inv => 
+          inv.attendeeStatus === 'invited' || inv.attendeeStatus === 'pending'
+        );
+        setPendingInvitations(pendingInvites);
+      } catch (error) {
+        console.error('Error fetching invitations:', error);
+        setPendingInvitations([]);
+      }
+
+      // Fetch pending meeting approvals (for admin/manager only)
+      if (user && ['admin', 'manager'].includes(user.role)) {
+        try {
+          const approvalsRes = await axios.get(`${API_BASE_URL}/meetings/pending-approval`, {
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 10000
+          });
+          setPendingMeetings(approvalsRes.data.meetings || []);
+        } catch (error) {
+          console.error('Error fetching pending approvals:', error);
+          setPendingMeetings([]);
+        }
+      }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const handleManualRefresh = () => {
+    setRefreshing(true);
+    fetchDashboardData(true);
   };
 
   const handleStatCardClick = (type) => {
@@ -283,6 +422,13 @@ const Dashboard = () => {
   return (
     <Container maxWidth="xl">
       <Box sx={{ py: 3 }}>
+        {/* Socket.IO Status Indicator (only show if not connected) */}
+        {!isConnected && (
+          <Alert severity="info" sx={{ mb: 3 }}>
+            Đang sử dụng chế độ polling (cập nhật mỗi 10s). Real-time updates không khả dụng.
+          </Alert>
+        )}
+        
         {/* Header */}
         <Paper 
           elevation={0}
@@ -785,12 +931,33 @@ const Dashboard = () => {
               </Card>
 
               {/* Pending Items */}
-              {(pendingProtocols.length > 0 || pendingInvitations.length > 0) && (
+              {(pendingProtocols.length > 0 || pendingInvitations.length > 0 || pendingMeetings.length > 0) && (
                 <Card>
                   <CardContent>
-                    <Typography variant="h6" fontWeight={600} gutterBottom>
-                      Chờ xử lý
-                    </Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                      <Typography variant="h6" fontWeight={600}>
+                        Chờ xử lý
+                      </Typography>
+                      <IconButton 
+                        size="small" 
+                        onClick={handleManualRefresh}
+                        disabled={refreshing}
+                        sx={{ 
+                          '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.1) }
+                        }}
+                      >
+                        <RefreshIcon 
+                          fontSize="small" 
+                          sx={{
+                            animation: refreshing ? 'spin 1s linear infinite' : 'none',
+                            '@keyframes spin': {
+                              '0%': { transform: 'rotate(0deg)' },
+                              '100%': { transform: 'rotate(360deg)' }
+                            }
+                          }}
+                        />
+                      </IconButton>
+                    </Box>
                     <List sx={{ py: 0 }}>
                       {pendingProtocols.length > 0 && (
                         <Box
@@ -849,6 +1016,28 @@ const Dashboard = () => {
                           <ListItemText
                             primary="Lời mời họp"
                             secondary={`${pendingInvitations.length} lời mời`}
+                          />
+                        </ListItem>
+                      )}
+                      {pendingMeetings.length > 0 && (
+                        <ListItem
+                          sx={{
+                            px: 0,
+                            cursor: 'pointer',
+                            '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.04) }
+                          }}
+                          onClick={() => navigate('/meeting-approvals')}
+                        >
+                          <ListItemAvatar>
+                            <Badge badgeContent={pendingMeetings.length} color="error">
+                              <Avatar sx={{ bgcolor: alpha(theme.palette.error.main, 0.1), color: 'error.main' }}>
+                                <ScheduleIcon />
+                              </Avatar>
+                            </Badge>
+                          </ListItemAvatar>
+                          <ListItemText
+                            primary="Cuộc họp chờ phê duyệt"
+                            secondary={`${pendingMeetings.length} cuộc họp`}
                           />
                         </ListItem>
                       )}

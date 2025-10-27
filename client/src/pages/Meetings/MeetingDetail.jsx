@@ -1848,21 +1848,44 @@ const MeetingDetail = () => {
                         variant="outlined"
                       />
                     </Stack>
-                    {canEdit && minutes.status === 'draft' && (
-                      <Button
-                        variant="text"
-                        size="small"
-                        onClick={() => handleOpenMinutesDialog(minutes)}
-                        sx={{
-                          textTransform: 'none',
-                          fontWeight: 500,
-                          fontSize: '0.75rem',
-                          padding: '2px 8px',
-                          minWidth: 'auto',
-                        }}
-                      >
-                        Chỉnh sửa
-                      </Button>
+                    {canEdit && (
+                      <Stack direction="row" spacing={0.5} onClick={(e) => e.stopPropagation()}>
+                        {minutes.status === 'draft' && (
+                          <Button
+                            variant="text"
+                            size="small"
+                            onClick={() => handleOpenMinutesDialog(minutes)}
+                            sx={{
+                              textTransform: 'none',
+                              fontWeight: 500,
+                              fontSize: '0.75rem',
+                              padding: '2px 8px',
+                              minWidth: 'auto',
+                            }}
+                          >
+                            Chỉnh sửa
+                          </Button>
+                        )}
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const statusText = getStatusText(minutes.status);
+                            if (window.confirm(`Bạn có chắc muốn xóa biên bản "${statusText}" này? Thao tác không thể hoàn tác.`)) {
+                              handleDeleteMinutes(minutes);
+                            }
+                          }}
+                          sx={{
+                            padding: '2px',
+                            color: 'error.main',
+                            '&:hover': {
+                              backgroundColor: alpha(theme.palette.error.main, 0.08)
+                            }
+                          }}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Stack>
                     )}
                   </Stack>
 
@@ -2654,7 +2677,7 @@ const MeetingDetail = () => {
             </Typography>
             <Box sx={{
               '& .ql-container': {
-                minHeight: 240,
+                minHeight: 300,
                 backgroundColor: 'white',
                 borderBottomLeftRadius: 8,
                 borderBottomRightRadius: 8,
@@ -2662,17 +2685,35 @@ const MeetingDetail = () => {
               '& .ql-toolbar': {
                 borderTopLeftRadius: 8,
                 borderTopRightRadius: 8,
+              },
+              '& .ql-editor': {
+                minHeight: '280px',
+                fontFamily: 'inherit',
+                fontSize: '14px',
+                lineHeight: 1.6
               }
             }}>
               <QuillWrapper
                 value={currentMinutes?.content || ''}
-                onChange={(val) => setCurrentMinutes(prev => ({ ...(prev || {}), content: val }))}
+                onChange={(val) => {
+                  // Xóa HTML tags để đếm ký tự
+                  const textLength = val ? val.replace(/<[^>]*>/g, '').length : 0;
+                  if (textLength <= 20000) {
+                    setCurrentMinutes(prev => ({ ...(prev || {}), content: val }));
+                  } else {
+                    alert('Nội dung không được vượt quá 20,000 ký tự');
+                  }
+                }}
                 readOnly={!!savingMinutes}
                 placeholder="Nhập nội dung biên bản cuộc họp..."
               />
             </Box>
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-              Tối đa 20,000 ký tự
+            <Typography 
+              variant="caption" 
+              color={currentMinutes?.content && currentMinutes.content.replace(/<[^>]*>/g, '').length > 18000 ? 'error.main' : 'text.secondary'} 
+              sx={{ mt: 1, display: 'block' }}
+            >
+              {currentMinutes?.content ? `${currentMinutes.content.replace(/<[^>]*>/g, '').length.toLocaleString()} / 20,000 ký tự` : 'Tối đa 20,000 ký tự'}
             </Typography>
           </Box>
 
@@ -2879,6 +2920,22 @@ export const MinutesViewDialog = ({ open, onClose, minutes, meetingId, apiBaseUr
     }
   };
 
+  const formatFileSize = (bytes) => {
+    if (!bytes) return '0 B';
+    const mb = bytes / (1024 * 1024);
+    if (mb >= 1) return `${mb.toFixed(1)} MB`;
+    const kb = bytes / 1024;
+    return `${kb.toFixed(1)} KB`;
+  };
+
+  const handleDownloadFile = (url, fileName) => {
+    if (downloadFileWithToken) {
+      downloadFileWithToken(url, fileName);
+    } else {
+      window.open(url, '_blank');
+    }
+  };
+
   return (
     <Dialog
       open={open}
@@ -2998,11 +3055,11 @@ export const MinutesViewDialog = ({ open, onClose, minutes, meetingId, apiBaseUr
                     <IconButton
                       size="small"
                       onClick={() => {
-                        const fileId = minutes.attachment._id || minutes.attachment.id;
-                        const downloadUrl = fileId
-                          ? `${apiBaseUrl}/meetings/${meetingId}/files/${fileId}/open`
-                          : `${apiBaseUrl}/meetings/${meetingId}/minutes/${minutes._id}/attachment/open`;
-                        downloadFileWithToken(downloadUrl, minutes.attachment.name || 'attachment');
+                          const fileId = minutes.attachment._id || minutes.attachment.id;
+                          const downloadUrl = fileId
+                            ? `${apiBaseUrl}/meetings/${meetingId}/files/${fileId}/open`
+                            : `${apiBaseUrl}/meetings/${meetingId}/minutes/${minutes._id}/attachment/open`;
+                          handleDownloadFile(downloadUrl, minutes.attachment.name || 'attachment');
                       }}
                       sx={{
                         ml: 0.5,
@@ -3022,36 +3079,48 @@ export const MinutesViewDialog = ({ open, onClose, minutes, meetingId, apiBaseUr
               <Box sx={{ mt: 2 }}>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Các file đính kèm:</Typography>
                 <Stack spacing={1}>
-                  {minutes.attachments.map((att, idx) => (
-                    <Stack key={att._id || idx} direction="row" spacing={1} alignItems="center">
-                      <AttachmentIcon fontSize="small" />
-                      <Link
-                        href={`${apiBaseUrl}/meetings/${meetingId}/minutes/${minutes._id}/attachments/${att._id || att.id}/view`}
-                        target="_blank"
-                        rel="noreferrer"
-                        sx={{ textDecoration: 'none' }}
-                      >
-                        <Typography variant="body1" fontWeight={500} color="primary" noWrap title={att.name}>
-                          {att.name}
-                        </Typography>
-                      </Link>
-                      <Typography variant="caption" color="text.secondary">
-                        ({formatFileSize(att.size)})
-                      </Typography>
-                      <Tooltip title="Tải xuống">
-                        <IconButton
-                          size="small"
-                          onClick={() => {
-                            const downloadUrl = `${apiBaseUrl}/meetings/${meetingId}/minutes/${minutes._id}/attachments/${att._id || att.id}/download`;
-                            downloadFileWithToken(downloadUrl, att.name || 'attachment');
-                          }}
-                          sx={{ ml: 0.5 }}
+                  {minutes.attachments.map((att, idx) => {
+                    // attachments từ minutesHistory không có _id, dùng path để download
+                    const filePath = att.path || '';
+                    const downloadUrl = filePath.startsWith('http') ? filePath : `${apiBaseUrl}${filePath.startsWith('/') ? '' : '/'}${filePath}`;
+                    
+                    return (
+                      <Stack key={idx} direction="row" spacing={1} alignItems="center">
+                        <AttachmentIcon fontSize="small" />
+                        <Link
+                          href={downloadUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          sx={{ textDecoration: 'none', flex: 1, minWidth: 0 }}
                         >
-                          <DownloadIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </Stack>
-                  ))}
+                          <Typography 
+                            variant="body1" 
+                            fontWeight={500} 
+                            color="primary" 
+                            noWrap 
+                            title={att.name}
+                            sx={{ cursor: 'pointer' }}
+                          >
+                            {att.name}
+                          </Typography>
+                        </Link>
+                        {att.size && (
+                          <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
+                            ({formatFileSize(att.size)})
+                          </Typography>
+                        )}
+                        <Tooltip title="Tải xuống">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleDownloadFile(downloadUrl, att.name || 'attachment')}
+                            sx={{ ml: 0.5 }}
+                          >
+                            <DownloadIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
+                    );
+                  })}
                 </Stack>
               </Box>
             )}

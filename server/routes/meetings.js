@@ -1013,6 +1013,37 @@ router.get('/invitations', authenticateToken, async (req, res) => {
   }
 });
 
+// @route   GET /api/meetings/pending-approval
+// @desc    Lấy danh sách cuộc họp chờ phê duyệt
+// @access  Private (Admin, Manager)
+router.get('/pending-approval', authenticateToken, async (req, res) => {
+  try {
+    // Check permissions
+    if (!['admin', 'manager'].includes(req.user.role)) {
+      return res.status(403).json({ message: 'Bạn không có quyền xem danh sách cuộc họp chờ phê duyệt' });
+    }
+
+    const meetings = await Meeting.find({
+      'generalApproval.status': 'pending'
+    })
+    .populate('organizer', 'fullName email avatar')
+    .populate('secretary', 'fullName email avatar')
+    .populate('room', 'name location')
+    .sort({ createdAt: -1 });
+
+    res.json({
+      message: 'Lấy danh sách cuộc họp chờ phê duyệt thành công',
+      meetings
+    });
+  } catch (error) {
+    console.error('Get pending approval meetings error:', error);
+    res.status(500).json({
+      message: 'Lỗi server khi lấy danh sách cuộc họp chờ phê duyệt',
+      error: process.env.NODE_ENV === 'development' ? error.message : {}
+    });
+  }
+});
+
 // @route   GET /api/meetings/:id
 // @desc    Lấy thông tin chi tiết cuộc họp
 // @access  Private
@@ -1160,8 +1191,13 @@ router.post('/', authenticateToken, meetingValidation, async (req, res) => {
     // Set trạng thái phê duyệt phòng khi có chọn phòng
     if (!isOnline && room) {
       meetingData.roomApproval = { status: 'pending' };
+      meetingData.generalApproval = { 
+        status: 'pending',
+        requestedAt: new Date()
+      };
     } else {
       meetingData.roomApproval = { status: 'not_required' };
+      meetingData.generalApproval = { status: 'not_required' };
     }
 
     console.log('🔍 Meeting data to save:', meetingData);
@@ -5312,6 +5348,77 @@ router.delete('/:id/notes/:noteId', authenticateToken, async (req, res) => {
     console.error('Delete note error:', error);
     res.status(500).json({
       message: 'Lỗi server khi xóa ghi chú',
+      error: process.env.NODE_ENV === 'development' ? error.message : {}
+    });
+  }
+});
+
+// @route   PUT /api/meetings/:id/approval
+// @desc    Phê duyệt hoặc từ chối cuộc họp
+// @access  Private (Admin, Manager)
+router.put('/:id/approval', authenticateToken, async (req, res) => {
+  try {
+    const { status, note } = req.body; // 'approved' or 'rejected'
+    
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ message: 'Trạng thái không hợp lệ' });
+    }
+
+    // Check permissions
+    if (!['admin', 'manager'].includes(req.user.role)) {
+      return res.status(403).json({ message: 'Bạn không có quyền phê duyệt cuộc họp' });
+    }
+
+    const meeting = await Meeting.findById(req.params.id);
+    if (!meeting) {
+      return res.status(404).json({ message: 'Cuộc họp không tồn tại' });
+    }
+
+    // Initialize generalApproval if doesn't exist
+    if (!meeting.generalApproval) {
+      meeting.generalApproval = { status: 'not_required' };
+    }
+
+    if (meeting.generalApproval.status !== 'pending') {
+      return res.status(400).json({ message: 'Cuộc họp không ở trạng thái chờ phê duyệt' });
+    }
+
+    // Update approval
+    meeting.generalApproval.status = status;
+    meeting.generalApproval.approvedBy = req.user._id;
+    
+    if (status === 'approved') {
+      meeting.generalApproval.approvedAt = new Date();
+      meeting.status = 'scheduled';
+    } else {
+      meeting.generalApproval.rejectedAt = new Date();
+    }
+    
+    if (note) {
+      meeting.generalApproval.note = note;
+    }
+
+    await meeting.save();
+
+    // Emit Socket.IO event for real-time update
+    const io = req.app.get('io');
+    if (io) {
+      io.emit(status === 'approved' ? 'meetingApproved' : 'meetingRejected', {
+        meetingId: meeting._id,
+        approvedBy: req.user._id,
+        status
+      });
+      console.log(`✅ Emitted ${status === 'approved' ? 'meetingApproved' : 'meetingRejected'} event`);
+    }
+
+    res.json({
+      message: status === 'approved' ? 'Đã phê duyệt cuộc họp' : 'Đã từ chối cuộc họp',
+      meeting
+    });
+  } catch (error) {
+    console.error('Meeting approval error:', error);
+    res.status(500).json({
+      message: 'Lỗi server khi phê duyệt cuộc họp',
       error: process.env.NODE_ENV === 'development' ? error.message : {}
     });
   }
