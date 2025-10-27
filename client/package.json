@@ -98,7 +98,7 @@
       "last 1 safari version"
     ]
   },
-  "homepage": ".",
+  "homepage": "/",
   "devDependencies": {
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^13.4.0",
