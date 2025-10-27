@@ -10,6 +10,19 @@ cd /opt/app
 ```
 
 ### 3. Pull code mới từ git
+
+**Nếu bị lỗi conflict với file local (package-lock.json, etc):**
+
+```bash
+# Xóa thay đổi local không cần thiết
+git reset --hard HEAD
+git clean -fd
+
+# Hoặc stash thay đổi (nếu cần giữ lại)
+# git stash
+```
+
+**Sau đó pull lại:**
 ```bash
 git pull origin main
 ```
