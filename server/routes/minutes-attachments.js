@@ -3,8 +3,7 @@ const router = express.Router();
 const Meeting = require('../models/Meeting');
 const path = require('path');
 const fs = require('fs');
-const authMiddleware = require('../middleware/auth');
-const authenticateToken = authMiddleware.authenticateToken;
+const { authenticateToken } = require('../middleware/auth');
 
 router.get('/:id/minutes/:minutesId/attachments/:attachmentId/download', authenticateToken, async (req, res) => {
   console.log('🔧 [MINUTES DOWNLOAD] Request received:', req.params);
