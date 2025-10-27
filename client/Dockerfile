@@ -7,6 +7,11 @@ RUN apk add --no-cache dumb-init
 # Set working directory
 WORKDIR /app
 
+# Build arguments
+ARG REACT_APP_API_BASE_URL
+ARG REACT_APP_SOCKET_URL
+ARG REACT_APP_GOOGLE_CLIENT_ID
+
 # Copy package files first for better Docker layer caching
 COPY package*.json ./
 
@@ -21,6 +26,9 @@ COPY . .
 ENV NODE_ENV=production
 ENV GENERATE_SOURCEMAP=false
 ENV INLINE_RUNTIME_CHUNK=false
+ENV REACT_APP_API_BASE_URL=$REACT_APP_API_BASE_URL
+ENV REACT_APP_SOCKET_URL=$REACT_APP_SOCKET_URL
+ENV REACT_APP_GOOGLE_CLIENT_ID=$REACT_APP_GOOGLE_CLIENT_ID
 RUN npm run build
 
 # Production stage - use smaller nginx image
