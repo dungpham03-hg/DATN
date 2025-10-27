@@ -34,8 +34,9 @@ RUN npm run build
 # Production stage - use smaller nginx image
 FROM nginx:1.25-alpine
 
-# Install security updates
-RUN apk upgrade --no-cache
+# Install security updates and dumb-init
+RUN apk upgrade --no-cache && \
+    apk add --no-cache dumb-init
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S appuser && \
