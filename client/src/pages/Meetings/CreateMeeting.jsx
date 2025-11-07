@@ -958,7 +958,7 @@ const CreateMeeting = () => {
         title="Chọn thư ký"
         initialSelected={formData.secretary ? [formData.secretary] : []}
         multiSelect={false}
-        filterRoles={['secretary', 'assistant']}
+        filterRoles={['secretary']}
       />
     </>
   );

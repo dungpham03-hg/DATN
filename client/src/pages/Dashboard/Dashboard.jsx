@@ -24,6 +24,7 @@ import {
   Tooltip,
   LinearProgress,
   useTheme,
+  useMediaQuery,
   alpha,
   Badge
 } from '@mui/material';
@@ -56,6 +57,7 @@ import QuickActions from '../../components/ui/quick-actions';
 
 const Dashboard = () => {
   const theme = useTheme();
+  const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
   const { user, token, loading: authLoading } = useAuth();
   const { socket, isConnected, connectionError } = useSocket();
   const navigate = useNavigate();
@@ -80,7 +82,7 @@ const Dashboard = () => {
       
       // Use polling if Socket.IO is not connected
       const usePolling = !isConnected;
-      const pollingInterval = usePolling ? 10000 : 30000; // 10s if polling, 30s if Socket.IO working
+      const pollingInterval = 60000; // 60s polling interval
       
       const interval = setInterval(() => {
         if (usePolling || !isConnected) {
@@ -425,7 +427,7 @@ const Dashboard = () => {
         {/* Socket.IO Status Indicator (only show if not connected) */}
         {!isConnected && (
           <Alert severity="info" sx={{ mb: 3 }}>
-            Đang sử dụng chế độ polling (cập nhật mỗi 10s). Real-time updates không khả dụng.
+            Đang sử dụng chế độ polling (cập nhật mỗi 60s). Real-time updates không khả dụng.
           </Alert>
         )}
         
@@ -434,16 +436,16 @@ const Dashboard = () => {
           elevation={0}
           className="slide-in-up"
           sx={{ 
-            mb: 4, 
-            p: 4,
+            mb: { xs: 2, sm: 3, md: 4 }, 
+            p: { xs: 2, sm: 3, md: 4 },
             background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
             color: 'white',
             position: 'relative',
             overflow: 'hidden',
-            borderRadius: 4,
+            borderRadius: { xs: 2, sm: 3, md: 4 },
             boxShadow: '0 10px 25px -5px rgba(59, 130, 246, 0.15)',
             '&:hover': {
-              transform: 'translateY(-2px)',
+              transform: { xs: 'none', sm: 'translateY(-2px)' },
               boxShadow: '0 15px 35px -5px rgba(59, 130, 246, 0.2)',
               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
             }
@@ -456,8 +458,8 @@ const Dashboard = () => {
               position: 'absolute',
               top: -50,
               right: -50,
-              width: 200,
-              height: 200,
+              width: { xs: 0, sm: 120, md: 200 },
+              height: { xs: 0, sm: 120, md: 200 },
               borderRadius: '50%',
               background: 'radial-gradient(circle, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 70%, transparent 100%)',
               zIndex: 0
@@ -469,8 +471,8 @@ const Dashboard = () => {
               position: 'absolute',
               bottom: -30,
               left: -30,
-              width: 150,
-              height: 150,
+              width: { xs: 0, sm: 100, md: 150 },
+              height: { xs: 0, sm: 100, md: 150 },
               borderRadius: '50%',
               background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.03) 70%, transparent 100%)',
               zIndex: 0,
@@ -483,8 +485,8 @@ const Dashboard = () => {
               position: 'absolute',
               top: '20%',
               left: '10%',
-              width: 80,
-              height: 80,
+              width: { xs: 0, sm: 60, md: 80 },
+              height: { xs: 0, sm: 60, md: 80 },
               borderRadius: '50%',
               background: 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%)',
               zIndex: 0,
@@ -493,12 +495,12 @@ const Dashboard = () => {
           />
           
           <Box sx={{ position: 'relative', zIndex: 1 }}>
-            <Grid container alignItems="center" spacing={3}>
+            <Grid container alignItems="center" spacing={{ xs: 2, sm: 3 }}>
               <Grid item xs={12} md={8}>
-                <Typography variant="h4" fontWeight={700} gutterBottom sx={{ color: 'white' }}>
+                <Typography variant="h5" fontWeight={700} gutterBottom sx={{ color: 'white', fontSize: { xs: '1.25rem', sm: '1.5rem', md: '2rem' } }}>
                   Chào mừng trở lại, {user?.fullName?.split(' ').pop() || 'Người dùng'}! 
                 </Typography>
-                <Typography variant="h6" sx={{ opacity: 0.9, fontWeight: 400 }}>
+                <Typography variant="h6" sx={{ opacity: 0.9, fontWeight: 400, fontSize: { xs: '0.95rem', md: '1.25rem' } }}>
                   {new Date().toLocaleDateString('vi-VN', { 
                     weekday: 'long', 
                     year: 'numeric', 
@@ -506,16 +508,16 @@ const Dashboard = () => {
                     day: 'numeric' 
                   })}
                 </Typography>
-                <Typography variant="body2" sx={{ opacity: 0.8, mt: 1 }}>
+                <Typography variant="body2" sx={{ opacity: 0.8, mt: 1, fontSize: { xs: '0.85rem', md: '0.95rem' } }}>
                   Quản lý cuộc họp hiệu quả với Meeting Manager
                 </Typography>
               </Grid>
               <Grid item xs={12} md={4}>
-                <Box sx={{ display: 'flex', justifyContent: { xs: 'flex-start', md: 'flex-end' }, gap: 1 }}>
+                <Box sx={{ display: 'flex', justifyContent: { xs: 'stretch', md: 'flex-end' }, gap: 1, flexDirection: { xs: 'column', sm: 'row' } }}>
                   {(user?.role === 'admin' || user?.role === 'manager') && (
                     <Button
                       variant="outlined"
-                      size="large"
+                      size={isMdUp ? 'large' : 'medium'}
                       startIcon={<TrendingUpIcon />}
                       onClick={() => navigate('/reports')}
                       sx={{
@@ -528,21 +530,21 @@ const Dashboard = () => {
                   )}
                   <Button
                     variant="contained"
-                    size="large"
+                    size={isMdUp ? 'large' : 'medium'}
                     startIcon={<AddIcon />}
                     onClick={() => navigate('/meetings/create')}
-                    disabled={!['admin', 'manager', 'secretary', 'assistant'].includes(user?.role)}
+                    disabled={!['admin', 'manager', 'secretary'].includes(user?.role)}
                     sx={{
                       bgcolor: 'rgba(255,255,255,0.2)',
                       color: 'white',
                       backdropFilter: 'blur(10px)',
                       border: '1px solid rgba(255,255,255,0.3)',
                       fontWeight: 600,
-                      px: 3,
-                      py: 1.5,
+                      px: { xs: 2, md: 3 },
+                      py: { xs: 1, md: 1.5 },
                       '&:hover': {
                         bgcolor: 'rgba(255,255,255,0.3)',
-                        transform: 'translateY(-2px)',
+                        transform: { xs: 'none', sm: 'translateY(-2px)' },
                         boxShadow: theme.shadows[8]
                       },
                       '&:disabled': {
@@ -570,22 +572,22 @@ const Dashboard = () => {
                   cursor: 'pointer',
                   transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                   border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                  borderRadius: 4,
+                  borderRadius: { xs: 2, sm: 3, md: 4 },
                   position: 'relative',
                   overflow: 'hidden',
                   background: 'rgba(255, 255, 255, 0.9)',
                   backdropFilter: 'blur(10px)',
                   animationDelay: `${index * 100}ms`,
                   '&:hover': {
-                    transform: 'translateY(-4px) scale(1.01)',
+                    transform: { xs: 'none', sm: 'translateY(-4px) scale(1.01)' },
                     boxShadow: `0 10px 25px -5px ${alpha(card.color, 0.15)}, 0 0 0 1px ${alpha(card.color, 0.08)}`,
                     borderColor: card.color,
                     '& .stat-icon': {
-                      transform: 'scale(1.05) rotate(2deg)',
+                      transform: { xs: 'none', sm: 'scale(1.05) rotate(2deg)' },
                       filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
                     },
                     '& .stat-value': {
-                      transform: 'scale(1.05)',
+                      transform: { xs: 'none', sm: 'scale(1.05)' },
                       color: card.color
                     }
                   },
@@ -603,7 +605,7 @@ const Dashboard = () => {
                 }}
                 onClick={() => handleStatCardClick(card.type)}
               >
-                <CardContent sx={{ p: 3, position: 'relative', zIndex: 2 }}>
+                <CardContent sx={{ p: { xs: 2, md: 3 }, position: 'relative', zIndex: 2 }}>
                   <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2 }}>
                     <Box>
                       <Typography 
@@ -613,7 +615,7 @@ const Dashboard = () => {
                         sx={{ 
                           textTransform: 'uppercase', 
                           letterSpacing: 1,
-                          fontSize: '0.75rem',
+                          fontSize: { xs: '0.7rem', md: '0.75rem' },
                           opacity: 0.8
                         }}
                       >
@@ -627,7 +629,8 @@ const Dashboard = () => {
                           color: card.color, 
                           mt: 1,
                           transition: 'all 0.3s ease',
-                          textShadow: `0 2px 4px ${alpha(card.color, 0.2)}`
+                          textShadow: `0 2px 4px ${alpha(card.color, 0.2)}`,
+                          fontSize: { xs: '2rem', sm: '2.25rem', md: '2.5rem' }
                         }}
                       >
                         {card.value}
@@ -636,8 +639,8 @@ const Dashboard = () => {
                     <Box
                       className="stat-icon"
                       sx={{
-                        width: 64,
-                        height: 64,
+                        width: { xs: 48, sm: 56, md: 64 },
+                        height: { xs: 48, sm: 56, md: 64 },
                         borderRadius: 3,
                         background: `linear-gradient(135deg, ${card.bgColor} 0%, ${alpha(card.color, 0.1)} 100%)`,
                         display: 'flex',
@@ -663,7 +666,7 @@ const Dashboard = () => {
                     >
                       {React.cloneElement(card.icon, { 
                         sx: { 
-                          fontSize: 32,
+                          fontSize: { xs: 24, sm: 28, md: 32 },
                           filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
                           position: 'relative',
                           zIndex: 1
@@ -676,8 +679,8 @@ const Dashboard = () => {
                     <Box
                       className="pulse"
                       sx={{
-                        width: 8,
-                        height: 8,
+                        width: { xs: 6, md: 8 },
+                        height: { xs: 6, md: 8 },
                         borderRadius: '50%',
                         background: `linear-gradient(135deg, ${card.color} 0%, ${alpha(card.color, 0.6)} 100%)`,
                         boxShadow: `0 0 8px ${alpha(card.color, 0.4)}`,
@@ -689,7 +692,7 @@ const Dashboard = () => {
                       color="text.secondary" 
                       fontWeight={600}
                       sx={{ 
-                        fontSize: '0.75rem',
+                        fontSize: { xs: '0.7rem', md: '0.75rem' },
                         opacity: 0.8
                       }}
                     >
@@ -712,12 +715,12 @@ const Dashboard = () => {
               sx={{ 
                 height: '100%',
                 border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                borderRadius: 4,
+                borderRadius: { xs: 2, sm: 3, md: 4 },
                 background: 'rgba(255, 255, 255, 0.9)',
                 backdropFilter: 'blur(10px)',
                 transition: 'all 0.3s ease',
                 '&:hover': {
-                  transform: 'translateY(-2px)',
+                  transform: { xs: 'none', sm: 'translateY(-2px)' },
                   boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
                   borderColor: alpha(theme.palette.primary.main, 0.2)
                 }
@@ -726,7 +729,7 @@ const Dashboard = () => {
               <CardContent sx={{ p: 0 }}>
                 {/* Card Header */}
                 <Box sx={{ 
-                  p: 3, 
+                  p: { xs: 2, md: 3 }, 
                   pb: 2,
                   borderBottom: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
                   background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.02)} 0%, ${alpha(theme.palette.primary.main, 0.01)} 100%)`,
@@ -769,7 +772,7 @@ const Dashboard = () => {
                 </Box>
 
                 {/* Meetings List */}
-                <Box sx={{ p: 2 }}>
+                <Box sx={{ p: { xs: 1.5, md: 2 } }}>
                   {recentMeetings.length > 0 ? (
                     <Stack spacing={2}>
                       {recentMeetings.map((meeting, index) => {
@@ -779,7 +782,7 @@ const Dashboard = () => {
                             key={meeting._id}
                             elevation={0}
                             sx={{
-                              p: 2.5,
+                              p: { xs: 1.75, md: 2.5 },
                               cursor: 'pointer',
                               borderRadius: 2,
                               border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
@@ -787,16 +790,16 @@ const Dashboard = () => {
                               '&:hover': {
                                 borderColor: theme.palette.primary.main,
                                 boxShadow: `0 4px 20px ${alpha(theme.palette.primary.main, 0.1)}`,
-                                transform: 'translateY(-2px)'
+                                transform: { xs: 'none', sm: 'translateY(-2px)' }
                               }
                             }}
                             onClick={() => navigate(`/meetings/${meeting._id}`)}
                           >
-                            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: { xs: 1.5, md: 2 } }}>
                               <Box
                                 sx={{
-                                  width: 48,
-                                  height: 48,
+                                  width: { xs: 40, md: 48 },
+                                  height: { xs: 40, md: 48 },
                                   borderRadius: 2,
                                   bgcolor: alpha(theme.palette.primary.main, 0.1),
                                   display: 'flex',
@@ -810,7 +813,7 @@ const Dashboard = () => {
                               </Box>
                               <Box sx={{ flex: 1, minWidth: 0 }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                                  <Typography variant="subtitle1" fontWeight={600} noWrap sx={{ flex: 1 }}>
+                                  <Typography variant="subtitle1" fontWeight={600} noWrap sx={{ flex: 1, fontSize: { xs: '0.95rem', md: '1rem' } }}>
                                     {meeting.title}
                                   </Typography>
                                   <Chip
@@ -830,7 +833,7 @@ const Dashboard = () => {
                                   {(meeting.room || meeting.location) && (
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                       <LocationIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                                      <Typography variant="body2" color="text.secondary" noWrap>
+                                      <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: { xs: '70%', md: '100%' } }}>
                                         {meeting.room ? meeting.room.name : meeting.location}
                                       </Typography>
                                     </Box>
@@ -862,11 +865,11 @@ const Dashboard = () => {
                       })}
                     </Stack>
                   ) : (
-                    <Box sx={{ textAlign: 'center', py: 6 }}>
+                    <Box sx={{ textAlign: 'center', py: { xs: 4, md: 6 } }}>
                       <Box
                         sx={{
-                          width: 80,
-                          height: 80,
+                          width: { xs: 64, md: 80 },
+                          height: { xs: 64, md: 80 },
                           borderRadius: '50%',
                           bgcolor: alpha(theme.palette.primary.main, 0.1),
                           display: 'flex',
@@ -876,7 +879,7 @@ const Dashboard = () => {
                           mb: 2
                         }}
                       >
-                        <EventBusyIcon sx={{ fontSize: 40, color: 'primary.main' }} />
+                        <EventBusyIcon sx={{ fontSize: { xs: 32, md: 40 }, color: 'primary.main' }} />
                       </Box>
                       <Typography variant="h6" fontWeight={500} gutterBottom>
                         Chưa có cuộc họp nào
@@ -900,18 +903,18 @@ const Dashboard = () => {
                 className="slide-in-right"
                 sx={{ 
                   border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                  borderRadius: 4,
+                  borderRadius: { xs: 2, sm: 3, md: 4 },
                   background: 'rgba(255, 255, 255, 0.9)',
                   backdropFilter: 'blur(10px)',
                   transition: 'all 0.3s ease',
                   '&:hover': {
-                    transform: 'translateY(-1px)',
+                    transform: { xs: 'none', sm: 'translateY(-1px)' },
                     boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.03)',
                     borderColor: alpha(theme.palette.primary.main, 0.15)
                   }
                 }}
               >
-                <CardContent sx={{ p: 3 }}>
+                <CardContent sx={{ p: { xs: 2, md: 3 } }}>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                     Các tính năng được sử dụng nhiều nhất
                   </Typography>

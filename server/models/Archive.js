@@ -363,9 +363,9 @@ archiveSchema.pre('save', function(next) {
 archiveSchema.statics.findByUser = function(userId, role, department) {
   let query = { status: 'active' };
   
-  if (role === 'admin' || role === 'assistant') {
-    // Admin và Assistant thấy tất cả
-  } else if (role === 'manager' || role === 'secretary') {
+  if (role === 'admin' || role === 'secretary') {
+    // Admin và Secretary thấy tất cả
+  } else if (role === 'manager') {
     // Manager và Secretary thấy:
     query.$or = [
       { createdBy: userId },
@@ -409,8 +409,8 @@ archiveSchema.methods.incrementDownloadCount = function() {
 
 // Method để kiểm tra quyền truy cập
 archiveSchema.methods.canAccess = function(userId, userRole, userDepartment) {
-  // Admin và Assistant có thể truy cập tất cả
-  if (userRole === 'admin' || userRole === 'assistant') return true;
+  // Admin và Secretary có thể truy cập tất cả
+  if (userRole === 'admin' || userRole === 'secretary') return true;
   
   // Người tạo có thể truy cập
   if (this.createdBy.toString() === userId.toString()) return true;

@@ -11,10 +11,6 @@ import {
   Stack,
   IconButton,
   InputAdornment,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   Divider,
   Grid,
   CircularProgress,
@@ -30,10 +26,6 @@ import {
   Person as PersonIcon,
   Email as EmailIcon,
   Lock as LockIcon,
-  Business as BusinessIcon,
-  Work as WorkIcon,
-  Phone as PhoneIcon,
-  AdminPanelSettings as AdminIcon,
   Visibility,
   VisibilityOff,
   ArrowBack as ArrowBackIcon,
@@ -53,11 +45,7 @@ const Register = () => {
     fullName: '',
     email: '',
     password: '',
-    confirmPassword: '',
-    department: '',
-    position: '',
-    phone: '',
-    role: 'user'
+    confirmPassword: ''
   });
   
   const [showPassword, setShowPassword] = useState(false);
@@ -122,20 +110,6 @@ const Register = () => {
           newErrors.confirmPassword = 'Mật khẩu xác nhận không khớp';
         }
         break;
-        
-      case 2: // Work Information
-        if (formData.department && formData.department.length > 50) {
-          newErrors.department = 'Phòng ban không được vượt quá 50 ký tự';
-        }
-        
-        if (formData.position && formData.position.length > 50) {
-          newErrors.position = 'Chức vụ không được vượt quá 50 ký tự';
-        }
-        
-        if (formData.phone && !/^(0|\+84)[3-9]\d{8,9}$/.test(formData.phone)) {
-          newErrors.phone = 'Số điện thoại không hợp lệ';
-        }
-        break;
     }
     
     return newErrors;
@@ -159,7 +133,7 @@ const Register = () => {
     
     // Validate all steps
     let allErrors = {};
-    for (let i = 0; i <= 2; i++) {
+    for (let i = 0; i <= 1; i++) {
       allErrors = { ...allErrors, ...validateStep(i) };
     }
     
@@ -168,7 +142,6 @@ const Register = () => {
       // Go to first step with error
       if (allErrors.fullName || allErrors.email) setActiveStep(0);
       else if (allErrors.password || allErrors.confirmPassword) setActiveStep(1);
-      else setActiveStep(2);
       return;
     }
 
@@ -185,10 +158,7 @@ const Register = () => {
           fullName: formData.fullName.trim(),
           email: formData.email.trim().toLowerCase(),
           password: formData.password,
-          department: formData.department.trim(),
-          position: formData.position.trim(),
-          phone: formData.phone.trim(),
-          role: formData.role
+          role: 'guest' // Chỉ dành cho khách, role mặc định là guest
         })});
 
       const data = await response.json();
@@ -322,79 +292,6 @@ const Register = () => {
           />
         </Stack>
       )
-    },
-    {
-      label: 'Thông tin công việc',
-      icon: <WorkIcon />,
-      content: (
-        <Stack spacing={3}>
-          <TextField
-            fullWidth
-            label="Phòng ban"
-            name="department"
-            value={formData.department}
-            onChange={handleChange}
-            error={!!errors.department}
-            helperText={errors.department}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <BusinessIcon color="action" />
-                </InputAdornment>
-              )}}
-          />
-          <TextField
-            fullWidth
-            label="Chức vụ"
-            name="position"
-            value={formData.position}
-            onChange={handleChange}
-            error={!!errors.position}
-            helperText={errors.position}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <WorkIcon color="action" />
-                </InputAdornment>
-              )}}
-          />
-          <TextField
-            fullWidth
-            label="Số điện thoại"
-            name="phone"
-            value={formData.phone}
-            onChange={handleChange}
-            error={!!errors.phone}
-            helperText={errors.phone}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <PhoneIcon color="action" />
-                </InputAdornment>
-              )}}
-          />
-          <FormControl fullWidth>
-            <InputLabel>Vai trò</InputLabel>
-            <Select
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
-              label="Vai trò"
-              startAdornment={
-                <InputAdornment position="start">
-                  <AdminIcon color="action" />
-                </InputAdornment>
-              }
-            >
-              <MenuItem value="employee">Người dùng</MenuItem>
-              <MenuItem value="secretary">Thư ký</MenuItem>
-              <MenuItem value="manager">Quản lý</MenuItem>
-              <MenuItem value="technician">Kỹ thuật</MenuItem>
-              <MenuItem value="admin">Quản trị viên</MenuItem>
-            </Select>
-          </FormControl>
-        </Stack>
-      )
     }
   ];
 
@@ -434,7 +331,7 @@ const Register = () => {
               Đăng ký tài khoản
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Tạo tài khoản mới để bắt đầu sử dụng hệ thống
+              Đăng ký tài khoản khách để truy cập hệ thống
             </Typography>
           </Box>
 

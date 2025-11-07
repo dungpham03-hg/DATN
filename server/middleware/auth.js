@@ -77,7 +77,7 @@ const requireAdmin = (req, res, next) => {
   next();
 };
 
-// Middleware kiểm tra quyền manager hoặc admin hoặc assistant
+// Middleware kiểm tra quyền manager hoặc admin hoặc secretary
 const requireManagerOrAdmin = (req, res, next) => {
   if (!['admin', 'manager'].includes(req.user.role)) {
     return res.status(403).json({ 
@@ -87,7 +87,7 @@ const requireManagerOrAdmin = (req, res, next) => {
   next();
 };
 
-// Middleware: technician hoặc admin/assistant
+// Middleware: technician hoặc admin/secretary
 const requireTechnicianOrAdmin = (req, res, next) => {
   if (!['admin', 'technician'].includes(req.user.role)) {
     return res.status(403).json({ message: 'Chỉ kỹ thuật hoặc admin mới có quyền truy cập' });
@@ -114,8 +114,8 @@ const checkResourceOwnership = (resourceField = 'organizer') => {
 const checkDepartmentAccess = (req, res, next) => {
   const { department } = req.query;
   
-  // Admin và Assistant có quyền xem tất cả departments
-  if (['admin', 'assistant'].includes(req.user.role)) {
+  // Admin và Secretary có quyền xem tất cả departments
+  if (['admin', 'secretary'].includes(req.user.role)) {
     return next();
   }
   

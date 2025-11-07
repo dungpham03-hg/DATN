@@ -1,0 +1,2533 @@
+{
+  "collections": {
+    "MeetingManagement.archives": {
+      "ns": "MeetingManagement.archives",
+      "jsonSchema": {
+        "bsonType": "object",
+        "required": [
+          "_id",
+          "__v",
+          "access",
+          "archivedAt",
+          "archiveType",
+          "createdAt",
+          "createdBy",
+          "description",
+          "documents",
+          "meeting",
+          "meetingSnapshot",
+          "minutesSnapshots",
+          "notes",
+          "notifications",
+          "retentionPolicy",
+          "statistics",
+          "status",
+          "summary",
+          "tags",
+          "title",
+          "updatedAt"
+        ],
+        "properties": {
+          "_id": {
+            "bsonType": "objectId"
+          },
+          "__v": {
+            "bsonType": "int"
+          },
+          "access": {
+            "bsonType": "object",
+            "properties": {
+              "allowedDepartments": {
+                "bsonType": "array",
+                "items": {
+                  "bsonType": "string"
+                }
+              },
+              "allowedUsers": {
+                "bsonType": "array"
+              },
+              "isPublic": {
+                "bsonType": "bool"
+              },
+              "restrictedUsers": {
+                "bsonType": "array"
+              }
+            },
+            "required": [
+              "allowedDepartments",
+              "allowedUsers",
+              "isPublic",
+              "restrictedUsers"
+            ]
+          },
+          "archivedAt": {
+            "bsonType": "date"
+          },
+          "archiveType": {
+            "bsonType": "string"
+          },
+          "createdAt": {
+            "bsonType": "date"
+          },
+          "createdBy": {
+            "bsonType": "objectId"
+          },
+          "description": {
+            "bsonType": "string"
+          },
+          "documents": {
+            "bsonType": "array",
+            "items": {
+              "bsonType": "object",
+              "properties": {
+                "_id": {
+                  "bsonType": "objectId"
+                },
+                "archivedAt": {
+                  "bsonType": "date"
+                },
+                "archivePath": {
+                  "bsonType": "string"
+                },
+                "messageAuthor": {
+                  "bsonType": "objectId"
+                },
+                "messageId": {
+                  "bsonType": "objectId"
+                },
+                "name": {
+                  "bsonType": "string"
+                },
+                "originalPath": {
+                  "bsonType": "string"
+                },
+                "size": {
+                  "bsonType": "int"
+                },
+                "type": {
+                  "bsonType": "string"
+                },
+                "uploadedAt": {
+                  "bsonType": "date"
+                },
+                "uploadedBy": {
+                  "bsonType": "objectId"
+                }
+              },
+              "required": [
+                "_id",
+                "archivedAt",
+                "archivePath",
+                "name",
+                "originalPath",
+                "size",
+                "type",
+                "uploadedAt",
+                "uploadedBy"
+              ]
+            }
+          },
+          "meeting": {
+            "bsonType": "objectId"
+          },
+          "meetingSnapshot": {
+            "bsonType": "object",
+            "properties": {
+              "attendeeCount": {
+                "bsonType": "int"
+              },
+              "attendees": {
+                "bsonType": "array",
+                "items": {
+                  "bsonType": "object",
+                  "properties": {
+                    "_id": {
+                      "bsonType": "objectId"
+                    },
+                    "responseDate": {
+                      "bsonType": "date"
+                    },
+                    "status": {
+                      "bsonType": "string"
+                    },
+                    "user": {
+                      "bsonType": "object",
+                      "properties": {
+                        "_id": {
+                          "bsonType": "objectId"
+                        },
+                        "department": {
+                          "bsonType": "string"
+                        },
+                        "email": {
+                          "bsonType": "string"
+                        },
+                        "fullName": {
+                          "bsonType": "string"
+                        }
+                      },
+                      "required": [
+                        "_id",
+                        "department",
+                        "email",
+                        "fullName"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "_id",
+                    "status",
+                    "user"
+                  ]
+                }
+              },
+              "department": {
+                "bsonType": "string"
+              },
+              "description": {
+                "bsonType": "string"
+              },
+              "duration": {
+                "bsonType": "int"
+              },
+              "endTime": {
+                "bsonType": "date"
+              },
+              "location": {
+                "bsonType": "string"
+              },
+              "meetingType": {
+                "bsonType": "string"
+              },
+              "organizer": {
+                "bsonType": "object",
+                "properties": {
+                  "_id": {
+                    "bsonType": "objectId"
+                  },
+                  "department": {
+                    "bsonType": "string"
+                  },
+                  "email": {
+                    "bsonType": "string"
+                  },
+                  "fullName": {
+                    "bsonType": "string"
+                  }
+                },
+                "required": [
+                  "_id",
+                  "department",
+                  "email",
+                  "fullName"
+                ]
+              },
+              "priority": {
+                "bsonType": "string"
+              },
+              "secretary": {
+                "anyOf": [
+                  {
+                    "bsonType": "object",
+                    "properties": {
+                      "_id": {
+                        "bsonType": "objectId"
+                      },
+                      "department": {
+                        "bsonType": "string"
+                      },
+                      "email": {
+                        "bsonType": "string"
+                      },
+                      "fullName": {
+                        "bsonType": "string"
+                      }
+                    },
+                    "required": [
+                      "_id",
+                      "department",
+                      "email",
+                      "fullName"
+                    ]
+                  },
+                  {
+                    "bsonType": "null"
+                  }
+                ]
+              },
+              "startTime": {
+                "bsonType": "date"
+              },
+              "status": {
+                "bsonType": "string"
+              },
+              "title": {
+                "bsonType": "string"
+              }
+            },
+            "required": [
+              "attendeeCount",
+              "attendees",
+              "department",
+              "description",
+              "duration",
+              "endTime",
+              "location",
+              "meetingType",
+              "organizer",
+              "priority",
+              "secretary",
+              "startTime",
+              "status",
+              "title"
+            ]
+          },
+          "minutesSnapshot": {
+            "anyOf": [
+              {
+                "bsonType": "null"
+              },
+              {
+                "bsonType": "object",
+                "properties": {
+                  "_id": {
+                    "bsonType": "objectId"
+                  },
+                  "content": {
+                    "bsonType": "string"
+                  },
+                  "decisions": {
+                    "bsonType": "array"
+                  },
+                  "isApproved": {
+                    "bsonType": "bool"
+                  },
+                  "isVotingClosed": {
+                    "bsonType": "bool"
+                  },
+                  "secretary": {
+                    "bsonType": "object",
+                    "properties": {
+                      "_id": {
+                        "bsonType": "objectId"
+                      },
+                      "email": {
+                        "bsonType": "string"
+                      },
+                      "fullName": {
+                        "bsonType": "string"
+                      }
+                    },
+                    "required": [
+                      "_id",
+                      "email",
+                      "fullName"
+                    ]
+                  },
+                  "status": {
+                    "bsonType": "string"
+                  },
+                  "title": {
+                    "bsonType": "string"
+                  },
+                  "voteDeadline": {
+                    "bsonType": "date"
+                  },
+                  "votes": {
+                    "bsonType": "array",
+                    "items": {
+                      "bsonType": "object",
+                      "properties": {
+                        "_id": {
+                          "bsonType": "objectId"
+                        },
+                        "comment": {
+                          "bsonType": "string"
+                        },
+                        "user": {
+                          "bsonType": "object",
+                          "properties": {
+                            "_id": {
+                              "bsonType": "objectId"
+                            },
+                            "email": {
+                              "bsonType": "string"
+                            },
+                            "fullName": {
+                              "bsonType": "string"
+                            }
+                          },
+                          "required": [
+                            "_id",
+                            "email",
+                            "fullName"
+                          ]
+                        },
+                        "votedAt": {
+                          "bsonType": "date"
+                        },
+                        "voteType": {
+                          "bsonType": "string"
+                        }
+                      },
+                      "required": [
+                        "_id",
+                        "comment",
+                        "user",
+                        "votedAt",
+                        "voteType"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "_id",
+                  "content",
+                  "decisions",
+                  "isApproved",
+                  "isVotingClosed",
+                  "secretary",
+                  "status",
+                  "title",
+                  "voteDeadline",
+                  "votes"
+                ]
+              }
+            ]
+          },
+          "minutesSnapshots": {
+            "bsonType": "array",
+            "items": {
+              "bsonType": "object",
+              "properties": {
+                "_id": {
+                  "bsonType": "objectId"
+                },
+                "__v": {
+                  "bsonType": "int"
+                },
+                "approvedAt": {
+                  "bsonType": "date"
+                },
+                "approvedBy": {
+                  "bsonType": "objectId"
+                },
+                "attachments": {
+                  "bsonType": "array"
+                },
+                "content": {
+                  "bsonType": "string"
+                },
+                "createdAt": {
+                  "bsonType": "date"
+                },
+                "decisions": {
+                  "bsonType": "array"
+                },
+                "isApproved": {
+                  "bsonType": "bool"
+                },
+                "isVotingClosed": {
+                  "bsonType": "bool"
+                },
+                "meeting": {
+                  "bsonType": "objectId"
+                },
+                "metadata": {
+                  "bsonType": "object",
+                  "properties": {
+                    "agreeCount": {
+                      "bsonType": "int"
+                    },
+                    "agreeWithCommentsCount": {
+                      "bsonType": "int"
+                    },
+                    "attendeeCount": {
+                      "bsonType": "int"
+                    },
+                    "disagreeCount": {
+                      "bsonType": "int"
+                    },
+                    "receivedVoteCount": {
+                      "bsonType": "int"
+                    },
+                    "requiredVoteCount": {
+                      "bsonType": "int"
+                    }
+                  },
+                  "required": [
+                    "agreeCount",
+                    "agreeWithCommentsCount",
+                    "attendeeCount",
+                    "disagreeCount",
+                    "receivedVoteCount",
+                    "requiredVoteCount"
+                  ]
+                },
+                "reviewers": {
+                  "bsonType": "array"
+                },
+                "secretary": {
+                  "bsonType": "objectId"
+                },
+                "status": {
+                  "bsonType": "string"
+                },
+                "title": {
+                  "bsonType": "string"
+                },
+                "updatedAt": {
+                  "bsonType": "date"
+                },
+                "version": {
+                  "bsonType": "int"
+                },
+                "voteDeadline": {
+                  "bsonType": "date"
+                },
+                "votes": {
+                  "bsonType": "array",
+                  "items": {
+                    "bsonType": "object",
+                    "properties": {
+                      "_id": {
+                        "bsonType": "objectId"
+                      },
+                      "comment": {
+                        "bsonType": "string"
+                      },
+                      "user": {
+                        "bsonType": "objectId"
+                      },
+                      "votedAt": {
+                        "bsonType": "date"
+                      },
+                      "voteType": {
+                        "bsonType": "string"
+                      }
+                    },
+                    "required": [
+                      "_id",
+                      "comment",
+                      "user",
+                      "votedAt",
+                      "voteType"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "_id",
+                "__v",
+                "attachments",
+                "content",
+                "createdAt",
+                "decisions",
+                "isApproved",
+                "isVotingClosed",
+                "meeting",
+                "metadata",
+                "reviewers",
+                "secretary",
+                "status",
+                "title",
+                "updatedAt",
+                "version",
+                "voteDeadline",
+                "votes"
+              ]
+            }
+          },
+          "notes": {
+            "bsonType": "array",
+            "items": {
+              "bsonType": "object",
+              "properties": {
+                "_id": {
+                  "bsonType": "objectId"
+                },
+                "author": {
+                  "bsonType": "objectId"
+                },
+                "createdAt": {
+                  "bsonType": "date"
+                },
+                "isImportant": {
+                  "bsonType": "bool"
+                },
+                "text": {
+                  "bsonType": "string"
+                }
+              },
+              "required": [
+                "_id",
+                "author",
+                "createdAt",
+                "isImportant",
+                "text"
+              ]
+            }
+          },
+          "notifications": {
+            "bsonType": "array"
+          },
+          "protocolSnapshots": {
+            "bsonType": "array",
+            "items": {
+              "bsonType": "object",
+              "properties": {
+                "_id": {
+                  "bsonType": "objectId"
+                },
+                "__v": {
+                  "bsonType": "int"
+                },
+                "approvedAt": {
+                  "bsonType": [
+                    "null",
+                    "date"
+                  ]
+                },
+                "approvedBy": {
+                  "anyOf": [
+                    {
+                      "bsonType": "object",
+                      "properties": {
+                        "_id": {
+                          "bsonType": "objectId"
+                        },
+                        "email": {
+                          "bsonType": "string"
+                        },
+                        "fullName": {
+                          "bsonType": "string"
+                        }
+                      },
+                      "required": [
+                        "_id",
+                        "email",
+                        "fullName"
+                      ]
+                    },
+                    {
+                      "bsonType": "null"
+                    },
+                    {
+                      "bsonType": "objectId"
+                    }
+                  ]
+                },
+                "attachments": {
+                  "bsonType": "array",
+                  "items": {
+                    "bsonType": "object",
+                    "properties": {
+                      "_id": {
+                        "bsonType": "objectId"
+                      },
+                      "name": {
+                        "bsonType": "string"
+                      },
+                      "path": {
+                        "bsonType": "string"
+                      },
+                      "size": {
+                        "bsonType": "int"
+                      },
+                      "uploadedAt": {
+                        "bsonType": "date"
+                      },
+                      "uploadedBy": {
+                        "bsonType": "objectId"
+                      }
+                    },
+                    "required": [
+                      "_id",
+                      "name",
+                      "path",
+                      "size",
+                      "uploadedAt",
+                      "uploadedBy"
+                    ]
+                  }
+                },
+                "content": {
+                  "bsonType": "string"
+                },
+                "createdAt": {
+                  "bsonType": "date"
+                },
+                "decisions": {
+                  "bsonType": "array"
+                },
+                "meeting": {
+                  "bsonType": "objectId"
+                },
+                "rejectedAt": {
+                  "bsonType": [
+                    "null",
+                    "date"
+                  ]
+                },
+                "rejectedBy": {
+                  "anyOf": [
+                    {
+                      "bsonType": "null"
+                    },
+                    {
+                      "bsonType": "object",
+                      "properties": {
+                        "_id": {
+                          "bsonType": "objectId"
+                        },
+                        "email": {
+                          "bsonType": "string"
+                        },
+                        "fullName": {
+                          "bsonType": "string"
+                        }
+                      },
+                      "required": [
+                        "_id",
+                        "email",
+                        "fullName"
+                      ]
+                    },
+                    {
+                      "bsonType": "objectId"
+                    }
+                  ]
+                },
+                "rejectionReason": {
+                  "bsonType": [
+                    "null",
+                    "string"
+                  ]
+                },
+                "secretary": {
+                  "anyOf": [
+                    {
+                      "bsonType": "object",
+                      "properties": {
+                        "_id": {
+                          "bsonType": "objectId"
+                        },
+                        "email": {
+                          "bsonType": "string"
+                        },
+                        "fullName": {
+                          "bsonType": "string"
+                        }
+                      },
+                      "required": [
+                        "_id",
+                        "email",
+                        "fullName"
+                      ]
+                    },
+                    {
+                      "bsonType": "objectId"
+                    }
+                  ]
+                },
+                "status": {
+                  "bsonType": "string"
+                },
+                "submittedAt": {
+                  "bsonType": [
+                    "date",
+                    "null"
+                  ]
+                },
+                "title": {
+                  "bsonType": "string"
+                },
+                "updatedAt": {
+                  "bsonType": "date"
+                },
+                "version": {
+                  "bsonType": "int"
+                }
+              },
+              "required": [
+                "_id",
+                "content",
+                "createdAt",
+                "secretary",
+                "status",
+                "title"
+              ]
+            }
+          },
+          "retentionPolicy": {
+            "bsonType": "object",
+            "properties": {
+              "autoDelete": {
+                "bsonType": "bool"
+              },
+              "deleteAfterYears": {
+                "bsonType": "int"
+              },
+              "retainUntil": {
+                "bsonType": "date"
+              }
+            },
+            "required": [
+              "autoDelete",
+              "deleteAfterYears",
+              "retainUntil"
+            ]
+          },
+          "statistics": {
+            "bsonType": "object",
+            "properties": {
+              "downloadCount": {
+                "bsonType": "int"
+              },
+              "lastViewedAt": {
+                "bsonType": "date"
+              },
+              "totalDocuments": {
+                "bsonType": "int"
+              },
+              "totalSize": {
+                "bsonType": "int"
+              },
+              "viewCount": {
+                "bsonType": "int"
+              }
+            },
+            "required": [
+              "downloadCount",
+              "totalDocuments",
+              "totalSize",
+              "viewCount"
+            ]
+          },
+          "status": {
+            "bsonType": "string"
+          },
+          "summary": {
+            "bsonType": "object",
+            "properties": {
+              "actionItems": {
+                "bsonType": "array"
+              },
+              "keyPoints": {
+                "bsonType": "array"
+              },
+              "nextSteps": {
+                "bsonType": "string"
+              },
+              "text": {
+                "bsonType": "string"
+              }
+            },
+            "required": [
+              "actionItems",
+              "keyPoints",
+              "nextSteps",
+              "text"
+            ]
+          },
+          "tags": {
+            "bsonType": "array"
+          },
+          "title": {
+            "bsonType": "string"
+          },
+          "updatedAt": {
+            "bsonType": "date"
+          }
+        }
+      }
+    },
+    "MeetingManagement.meetingrooms": {
+      "ns": "MeetingManagement.meetingrooms",
+      "jsonSchema": {
+        "bsonType": "object",
+        "required": [
+          "_id",
+          "__v",
+          "capacity",
+          "createdAt",
+          "createdBy",
+          "description",
+          "facilities",
+          "isActive",
+          "location",
+          "name",
+          "updatedAt"
+        ],
+        "properties": {
+          "_id": {
+            "bsonType": "objectId"
+          },
+          "__v": {
+            "bsonType": "int"
+          },
+          "capacity": {
+            "bsonType": "int"
+          },
+          "createdAt": {
+            "bsonType": "date"
+          },
+          "createdBy": {
+            "bsonType": "objectId"
+          },
+          "description": {
+            "bsonType": "string"
+          },
+          "facilities": {
+            "bsonType": "array",
+            "items": {
+              "bsonType": "string"
+            }
+          },
+          "isActive": {
+            "bsonType": "bool"
+          },
+          "location": {
+            "bsonType": "object",
+            "properties": {
+              "address": {
+                "bsonType": "string"
+              },
+              "building": {
+                "bsonType": "string"
+              },
+              "floor": {
+                "bsonType": "string"
+              }
+            },
+            "required": [
+              "address",
+              "building",
+              "floor"
+            ]
+          },
+          "name": {
+            "bsonType": "string"
+          },
+          "updatedAt": {
+            "bsonType": "date"
+          }
+        }
+      }
+    },
+    "MeetingManagement.meetings": {
+      "ns": "MeetingManagement.meetings",
+      "jsonSchema": {
+        "bsonType": "object",
+        "required": [
+          "_id",
+          "__v",
+          "attachments",
+          "attendees",
+          "createdAt",
+          "department",
+          "description",
+          "endTime",
+          "isPrivate",
+          "meetingType",
+          "messages",
+          "notes",
+          "organizer",
+          "priority",
+          "recurring",
+          "reminders",
+          "startTime",
+          "status",
+          "summaryFiles",
+          "summaryMessages",
+          "tags",
+          "title",
+          "updatedAt"
+        ],
+        "properties": {
+          "_id": {
+            "bsonType": "objectId"
+          },
+          "__v": {
+            "bsonType": "int"
+          },
+          "agenda": {
+            "bsonType": "array",
+            "items": {
+              "bsonType": "object",
+              "properties": {
+                "_id": {
+                  "bsonType": "objectId"
+                },
+                "createdAt": {
+                  "bsonType": "date"
+                },
+                "description": {
+                  "bsonType": "string"
+                },
+                "order": {
+                  "bsonType": "int"
+                },
+                "title": {
+                  "bsonType": "string"
+                },
+                "updatedAt": {
+                  "bsonType": "date"
+                }
+              },
+              "required": [
+                "_id",
+                "createdAt",
+                "description",
+                "order",
+                "title",
+                "updatedAt"
+              ]
+            }
+          },
+          "attachments": {
+            "bsonType": "array",
+            "items": {
+              "bsonType": "object",
+              "properties": {
+                "_id": {
+                  "bsonType": "objectId"
+                },
+                "name": {
+                  "bsonType": "string"
+                },
+                "path": {
+                  "bsonType": "string"
+                },
+                "size": {
+                  "bsonType": "int"
+                },
+                "uploadedAt": {
+                  "bsonType": "date"
+                },
+                "uploadedBy": {
+                  "bsonType": "objectId"
+                }
+              },
+              "required": [
+                "_id",
+                "name",
+                "path",
+                "size",
+                "uploadedAt",
+                "uploadedBy"
+              ]
+            }
+          },
+          "attendees": {
+            "bsonType": "array",
+            "items": {
+              "bsonType": "object",
+              "properties": {
+                "_id": {
+                  "bsonType": "objectId"
+                },
+                "responseDate": {
+                  "bsonType": "date"
+                },
+                "status": {
+                  "bsonType": "string"
+                },
+                "user": {
+                  "bsonType": "objectId"
+                }
+              },
+              "required": [
+                "_id",
+                "status",
+                "user"
+              ]
+            }
+          },
+          "cancelReason": {
+            "bsonType": "string"
+          },
+          "comments": {
+            "bsonType": "array",
+            "items": {
+              "bsonType": "object",
+              "properties": {
+                "_id": {
+                  "bsonType": "objectId"
+                },
+                "author": {
+                  "bsonType": "objectId"
+                },
+                "content": {
+                  "bsonType": "string"
+                },
+                "createdAt": {
+                  "bsonType": "date"
+                },
+                "isEdited": {
+                  "bsonType": "bool"
+                },
+                "updatedAt": {
+                  "bsonType": "date"
+                }
+              },
+              "required": [
+                "_id",
+                "author",
+                "content",
+                "createdAt",
+                "isEdited",
+                "updatedAt"
+              ]
+            }
+          },
+          "createdAt": {
+            "bsonType": "date"
+          },
+          "createdBy": {
+            "bsonType": "objectId"
+          },
+          "decisions": {
+            "bsonType": "array",
+            "items": {
+              "bsonType": "object",
+              "properties": {
+                "_id": {
+                  "bsonType": "objectId"
+                },
+                "createdAt": {
+                  "bsonType": "date"
+                },
+                "createdBy": {
+                  "bsonType": "objectId"
+                },
+                "description": {
+                  "bsonType": "string"
+                },
+                "finalized": {
+                  "bsonType": "bool"
+                },
+                "finalResult": {
+                  "bsonType": "string"
+                },
+                "title": {
+                  "bsonType": "string"
+                },
+                "votes": {
+                  "bsonType": "array",
+                  "items": {
+                    "bsonType": "object",
+                    "properties": {
+                      "_id": {
+                        "bsonType": "objectId"
+                      },
+                      "choice": {
+                        "bsonType": "string"
+                      },
+                      "user": {
+                        "bsonType": "objectId"
+                      },
+                      "votedAt": {
+                        "bsonType": "date"
+                      }
+                    },
+                    "required": [
+                      "_id",
+                      "choice",
+                      "user",
+                      "votedAt"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "_id",
+                "createdAt",
+                "createdBy",
+                "description",
+                "finalized",
+                "finalResult",
+                "title",
+                "votes"
+              ]
+            }
+          },
+          "department": {
+            "bsonType": "string"
+          },
+          "description": {
+            "bsonType": "string"
+          },
+          "endTime": {
+            "bsonType": "date"
+          },
+          "isPrivate": {
+            "bsonType": "bool"
+          },
+          "location": {
+            "bsonType": "string"
+          },
+          "meetingLink": {
+            "bsonType": "string"
+          },
+          "meetingType": {
+            "bsonType": "string"
+          },
+          "messages": {
+            "bsonType": "array"
+          },
+          "minutes": {
+            "bsonType": "objectId"
+          },
+          "minutesAttachment": {
+            "bsonType": "object",
+            "properties": {
+              "uploadedAt": {
+                "bsonType": "date"
+              }
+            },
+            "required": [
+              "uploadedAt"
+            ]
+          },
+          "minutesDraft": {
+            "bsonType": "string"
+          },
+          "minutesHistory": {
+            "bsonType": "array",
+            "items": {
+              "bsonType": "object",
+              "properties": {
+                "_id": {
+                  "bsonType": "objectId"
+                },
+                "attachment": {
+                  "bsonType": "object",
+                  "properties": {
+                    "name": {
+                      "bsonType": "string"
+                    },
+                    "path": {
+                      "bsonType": "string"
+                    },
+                    "size": {
+                      "bsonType": "int"
+                    },
+                    "uploadedAt": {
+                      "bsonType": "date"
+                    },
+                    "uploadedBy": {
+                      "bsonType": "objectId"
+                    }
+                  },
+                  "required": [
+                    "uploadedAt"
+                  ]
+                },
+                "attachments": {
+                  "bsonType": "array"
+                },
+                "content": {
+                  "bsonType": "string"
+                },
+                "createdAt": {
+                  "bsonType": "date"
+                },
+                "createdBy": {
+                  "bsonType": "objectId"
+                },
+                "reviewedAt": {
+                  "bsonType": "date"
+                },
+                "reviewer": {
+                  "bsonType": "objectId"
+                },
+                "status": {
+                  "bsonType": "string"
+                },
+                "submittedAt": {
+                  "bsonType": "date"
+                },
+                "updatedAt": {
+                  "bsonType": "date"
+                }
+              },
+              "required": [
+                "_id",
+                "attachment",
+                "content",
+                "createdAt",
+                "createdBy",
+                "status",
+                "updatedAt"
+              ]
+            }
+          },
+          "minutesReviewer": {
+            "bsonType": "objectId"
+          },
+          "minutesStatus": {
+            "bsonType": "string"
+          },
+          "notes": {
+            "bsonType": "array",
+            "items": {
+              "bsonType": "object",
+              "properties": {
+                "_id": {
+                  "bsonType": "objectId"
+                },
+                "author": {
+                  "bsonType": "objectId"
+                },
+                "createdAt": {
+                  "bsonType": "date"
+                },
+                "text": {
+                  "bsonType": "string"
+                }
+              },
+              "required": [
+                "_id",
+                "author",
+                "createdAt",
+                "text"
+              ]
+            }
+          },
+          "organizer": {
+            "bsonType": "objectId"
+          },
+          "postponeReason": {
+            "bsonType": "string"
+          },
+          "priority": {
+            "bsonType": "string"
+          },
+          "recording": {
+            "bsonType": "object",
+            "properties": {
+              "duration": {
+                "bsonType": "int"
+              },
+              "filePath": {
+                "bsonType": "string"
+              },
+              "fileSize": {
+                "bsonType": "int"
+              },
+              "isEnabled": {
+                "bsonType": "bool"
+              },
+              "startedAt": {
+                "bsonType": "date"
+              },
+              "status": {
+                "bsonType": "string"
+              },
+              "stoppedAt": {
+                "bsonType": "date"
+              }
+            },
+            "required": [
+              "duration",
+              "filePath",
+              "fileSize",
+              "isEnabled",
+              "startedAt",
+              "status",
+              "stoppedAt"
+            ]
+          },
+          "recurring": {
+            "bsonType": "object",
+            "properties": {
+              "interval": {
+                "bsonType": "int"
+              },
+              "isRecurring": {
+                "bsonType": "bool"
+              }
+            },
+            "required": [
+              "interval",
+              "isRecurring"
+            ]
+          },
+          "reminders": {
+            "bsonType": "array"
+          },
+          "room": {
+            "bsonType": "objectId"
+          },
+          "roomApproval": {
+            "bsonType": "object",
+            "properties": {
+              "approvedAt": {
+                "bsonType": "date"
+              },
+              "approvedBy": {
+                "bsonType": "objectId"
+              },
+              "note": {
+                "bsonType": "string"
+              },
+              "status": {
+                "bsonType": "string"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "secretary": {
+            "bsonType": "objectId"
+          },
+          "startTime": {
+            "bsonType": "date"
+          },
+          "status": {
+            "bsonType": "string"
+          },
+          "summary": {
+            "bsonType": "string"
+          },
+          "summaryFiles": {
+            "bsonType": "array",
+            "items": {
+              "bsonType": "object",
+              "properties": {
+                "_id": {
+                  "bsonType": "objectId"
+                },
+                "name": {
+                  "bsonType": "string"
+                },
+                "path": {
+                  "bsonType": "string"
+                },
+                "size": {
+                  "bsonType": "int"
+                },
+                "uploadedAt": {
+                  "bsonType": "date"
+                },
+                "uploadedBy": {
+                  "bsonType": "objectId"
+                }
+              },
+              "required": [
+                "_id",
+                "name",
+                "path",
+                "size",
+                "uploadedAt",
+                "uploadedBy"
+              ]
+            }
+          },
+          "summaryImage": {
+            "bsonType": "string"
+          },
+          "summaryMessages": {
+            "bsonType": "array",
+            "items": {
+              "bsonType": "object",
+              "properties": {
+                "_id": {
+                  "bsonType": "objectId"
+                },
+                "attachments": {
+                  "bsonType": "array",
+                  "items": {
+                    "bsonType": "object",
+                    "properties": {
+                      "_id": {
+                        "bsonType": "objectId"
+                      },
+                      "name": {
+                        "bsonType": "string"
+                      },
+                      "path": {
+                        "bsonType": "string"
+                      },
+                      "size": {
+                        "bsonType": "int"
+                      },
+                      "type": {
+                        "bsonType": "string"
+                      }
+                    },
+                    "required": [
+                      "_id",
+                      "name",
+                      "path",
+                      "size",
+                      "type"
+                    ]
+                  }
+                },
+                "author": {
+                  "bsonType": "objectId"
+                },
+                "createdAt": {
+                  "bsonType": "date"
+                },
+                "text": {
+                  "bsonType": "string"
+                }
+              },
+              "required": [
+                "_id",
+                "attachments",
+                "author",
+                "createdAt",
+                "text"
+              ]
+            }
+          },
+          "tags": {
+            "bsonType": "array"
+          },
+          "tasks": {
+            "bsonType": "array",
+            "items": {
+              "bsonType": "object",
+              "properties": {
+                "_id": {
+                  "bsonType": "objectId"
+                },
+                "assignee": {
+                  "bsonType": "objectId"
+                },
+                "completed": {
+                  "bsonType": "bool"
+                },
+                "createdAt": {
+                  "bsonType": "date"
+                },
+                "createdBy": {
+                  "bsonType": "objectId"
+                },
+                "title": {
+                  "bsonType": "string"
+                },
+                "updatedAt": {
+                  "bsonType": "date"
+                }
+              },
+              "required": [
+                "_id",
+                "completed",
+                "createdAt",
+                "createdBy",
+                "title",
+                "updatedAt"
+              ]
+            }
+          },
+          "title": {
+            "bsonType": "string"
+          },
+          "updatedAt": {
+            "bsonType": "date"
+          }
+        }
+      }
+    },
+    "MeetingManagement.minutes": {
+      "ns": "MeetingManagement.minutes",
+      "jsonSchema": {
+        "bsonType": "object",
+        "required": [
+          "_id",
+          "__v",
+          "attachments",
+          "content",
+          "createdAt",
+          "decisions",
+          "isApproved",
+          "isVotingClosed",
+          "meeting",
+          "metadata",
+          "reviewers",
+          "secretary",
+          "status",
+          "title",
+          "updatedAt",
+          "version",
+          "voteDeadline",
+          "votes"
+        ],
+        "properties": {
+          "_id": {
+            "bsonType": "objectId"
+          },
+          "__v": {
+            "bsonType": "int"
+          },
+          "approvedAt": {
+            "bsonType": "date"
+          },
+          "approvedBy": {
+            "bsonType": "objectId"
+          },
+          "attachments": {
+            "bsonType": "array"
+          },
+          "content": {
+            "bsonType": "string"
+          },
+          "createdAt": {
+            "bsonType": "date"
+          },
+          "decisions": {
+            "bsonType": "array"
+          },
+          "isApproved": {
+            "bsonType": "bool"
+          },
+          "isVotingClosed": {
+            "bsonType": "bool"
+          },
+          "meeting": {
+            "bsonType": "objectId"
+          },
+          "metadata": {
+            "bsonType": "object",
+            "properties": {
+              "agreeCount": {
+                "bsonType": "int"
+              },
+              "agreeWithCommentsCount": {
+                "bsonType": "int"
+              },
+              "attendeeCount": {
+                "bsonType": "int"
+              },
+              "disagreeCount": {
+                "bsonType": "int"
+              },
+              "receivedVoteCount": {
+                "bsonType": "int"
+              },
+              "requiredVoteCount": {
+                "bsonType": "int"
+              }
+            },
+            "required": [
+              "agreeCount",
+              "agreeWithCommentsCount",
+              "attendeeCount",
+              "disagreeCount",
+              "receivedVoteCount",
+              "requiredVoteCount"
+            ]
+          },
+          "reviewers": {
+            "bsonType": "array"
+          },
+          "secretary": {
+            "bsonType": "objectId"
+          },
+          "status": {
+            "bsonType": "string"
+          },
+          "title": {
+            "bsonType": "string"
+          },
+          "updatedAt": {
+            "bsonType": "date"
+          },
+          "version": {
+            "bsonType": "int"
+          },
+          "voteDeadline": {
+            "bsonType": "date"
+          },
+          "votes": {
+            "bsonType": "array",
+            "items": {
+              "bsonType": "object",
+              "properties": {
+                "_id": {
+                  "bsonType": "objectId"
+                },
+                "comment": {
+                  "bsonType": "string"
+                },
+                "user": {
+                  "bsonType": "objectId"
+                },
+                "votedAt": {
+                  "bsonType": "date"
+                },
+                "voteType": {
+                  "bsonType": "string"
+                }
+              },
+              "required": [
+                "_id",
+                "comment",
+                "user",
+                "votedAt",
+                "voteType"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "MeetingManagement.notifications": {
+      "ns": "MeetingManagement.notifications",
+      "jsonSchema": {
+        "bsonType": "object",
+        "required": [
+          "_id",
+          "__v",
+          "createdAt",
+          "data",
+          "message",
+          "read",
+          "recipient",
+          "sender",
+          "title",
+          "type",
+          "updatedAt"
+        ],
+        "properties": {
+          "_id": {
+            "bsonType": "objectId"
+          },
+          "__v": {
+            "bsonType": "int"
+          },
+          "createdAt": {
+            "bsonType": "date"
+          },
+          "data": {
+            "bsonType": "object",
+            "properties": {
+              "meetingId": {
+                "bsonType": "objectId"
+              }
+            },
+            "required": [
+              "meetingId"
+            ]
+          },
+          "message": {
+            "bsonType": "string"
+          },
+          "read": {
+            "bsonType": "bool"
+          },
+          "readAt": {
+            "bsonType": "date"
+          },
+          "recipient": {
+            "bsonType": "objectId"
+          },
+          "sender": {
+            "bsonType": "objectId"
+          },
+          "title": {
+            "bsonType": "string"
+          },
+          "type": {
+            "bsonType": "string"
+          },
+          "updatedAt": {
+            "bsonType": "date"
+          }
+        }
+      }
+    },
+    "MeetingManagement.protocols": {
+      "ns": "MeetingManagement.protocols",
+      "jsonSchema": {
+        "bsonType": "object",
+        "required": [
+          "_id",
+          "__v",
+          "attachments",
+          "content",
+          "createdAt",
+          "decisions",
+          "meeting",
+          "secretary",
+          "status",
+          "title",
+          "updatedAt",
+          "version"
+        ],
+        "properties": {
+          "_id": {
+            "bsonType": "objectId"
+          },
+          "__v": {
+            "bsonType": "int"
+          },
+          "approvedAt": {
+            "bsonType": "date"
+          },
+          "approvedBy": {
+            "bsonType": "objectId"
+          },
+          "attachments": {
+            "bsonType": "array",
+            "items": {
+              "bsonType": "object",
+              "properties": {
+                "_id": {
+                  "bsonType": "objectId"
+                },
+                "name": {
+                  "bsonType": "string"
+                },
+                "path": {
+                  "bsonType": "string"
+                },
+                "size": {
+                  "bsonType": "int"
+                },
+                "uploadedAt": {
+                  "bsonType": "date"
+                },
+                "uploadedBy": {
+                  "bsonType": "objectId"
+                }
+              },
+              "required": [
+                "_id",
+                "name",
+                "path",
+                "size",
+                "uploadedAt",
+                "uploadedBy"
+              ]
+            }
+          },
+          "content": {
+            "bsonType": "string"
+          },
+          "createdAt": {
+            "bsonType": "date"
+          },
+          "decisions": {
+            "bsonType": "array"
+          },
+          "meeting": {
+            "bsonType": "objectId"
+          },
+          "rejectedAt": {
+            "bsonType": "date"
+          },
+          "rejectedBy": {
+            "bsonType": "objectId"
+          },
+          "rejectionReason": {
+            "bsonType": "string"
+          },
+          "secretary": {
+            "bsonType": "objectId"
+          },
+          "status": {
+            "bsonType": "string"
+          },
+          "title": {
+            "bsonType": "string"
+          },
+          "updatedAt": {
+            "bsonType": "date"
+          },
+          "version": {
+            "bsonType": "int"
+          }
+        }
+      }
+    },
+    "MeetingManagement.users": {
+      "ns": "MeetingManagement.users",
+      "jsonSchema": {
+        "bsonType": "object",
+        "required": [
+          "_id",
+          "__v",
+          "avatar",
+          "createdAt",
+          "email",
+          "emailVerified",
+          "fullName",
+          "isActive",
+          "notificationSettings",
+          "password",
+          "role",
+          "updatedAt"
+        ],
+        "properties": {
+          "_id": {
+            "bsonType": "objectId"
+          },
+          "__v": {
+            "bsonType": "int"
+          },
+          "avatar": {
+            "bsonType": "string"
+          },
+          "createdAt": {
+            "bsonType": "date"
+          },
+          "department": {
+            "bsonType": "string"
+          },
+          "email": {
+            "bsonType": "string"
+          },
+          "emailVerified": {
+            "bsonType": "bool"
+          },
+          "fullName": {
+            "bsonType": "string"
+          },
+          "githubId": {
+            "bsonType": "string"
+          },
+          "googleId": {
+            "bsonType": "string"
+          },
+          "isActive": {
+            "bsonType": "bool"
+          },
+          "lastLogin": {
+            "bsonType": "date"
+          },
+          "notificationSettings": {
+            "bsonType": "object",
+            "properties": {
+              "agendaUpdate": {
+                "bsonType": "bool"
+              },
+              "email": {
+                "bsonType": "bool"
+              },
+              "meetingReminder": {
+                "bsonType": "bool"
+              },
+              "meetingReminders": {
+                "bsonType": "bool"
+              },
+              "push": {
+                "bsonType": "bool"
+              },
+              "statusUpdates": {
+                "bsonType": "bool"
+              },
+              "weeklyReports": {
+                "bsonType": "bool"
+              }
+            },
+            "required": [
+              "email"
+            ]
+          },
+          "password": {
+            "bsonType": "string"
+          },
+          "phone": {
+            "bsonType": "string"
+          },
+          "position": {
+            "bsonType": "string"
+          },
+          "role": {
+            "bsonType": "string"
+          },
+          "updatedAt": {
+            "bsonType": "date"
+          }
+        }
+      }
+    }
+  },
+  "relationships": [
+    {
+      "id": "1303b7d0-a329-4484-b7ab-e09b708da5f6",
+      "relationship": [
+        {
+          "ns": "MeetingManagement.meetings",
+          "fields": [
+            "room"
+          ],
+          "cardinality": 1
+        },
+        {
+          "ns": "MeetingManagement.meetingrooms",
+          "fields": [
+            "_id"
+          ],
+          "cardinality": 1
+        }
+      ],
+      "isInferred": true
+    },
+    {
+      "id": "8f811d66-9722-4dd1-94d2-75462954678b",
+      "relationship": [
+        {
+          "ns": "MeetingManagement.archives",
+          "fields": [
+            "meeting"
+          ],
+          "cardinality": 1
+        },
+        {
+          "ns": "MeetingManagement.meetings",
+          "fields": [
+            "_id"
+          ],
+          "cardinality": 1
+        }
+      ],
+      "isInferred": true
+    },
+    {
+      "id": "ea856e5f-109c-4c0f-873f-40507199c227",
+      "relationship": [
+        {
+          "ns": "MeetingManagement.archives",
+          "fields": [
+            "minutesSnapshots",
+            "meeting"
+          ],
+          "cardinality": 1
+        },
+        {
+          "ns": "MeetingManagement.meetings",
+          "fields": [
+            "_id"
+          ],
+          "cardinality": 1
+        }
+      ],
+      "isInferred": true
+    },
+    {
+      "id": "ab31ab16-31ad-4bf6-b84d-4580db6a66e7",
+      "relationship": [
+        {
+          "ns": "MeetingManagement.archives",
+          "fields": [
+            "protocolSnapshots",
+            "meeting"
+          ],
+          "cardinality": 1
+        },
+        {
+          "ns": "MeetingManagement.meetings",
+          "fields": [
+            "_id"
+          ],
+          "cardinality": 1
+        }
+      ],
+      "isInferred": true
+    },
+    {
+      "id": "ee26cc63-a0f6-424c-9a29-b7a98b8cbef1",
+      "relationship": [
+        {
+          "ns": "MeetingManagement.minutes",
+          "fields": [
+            "meeting"
+          ],
+          "cardinality": 1
+        },
+        {
+          "ns": "MeetingManagement.meetings",
+          "fields": [
+            "_id"
+          ],
+          "cardinality": 1
+        }
+      ],
+      "isInferred": true
+    },
+    {
+      "id": "008d4fbd-4a23-455c-a1c0-15a1e1af1902",
+      "relationship": [
+        {
+          "ns": "MeetingManagement.notifications",
+          "fields": [
+            "data",
+            "meetingId"
+          ],
+          "cardinality": 1
+        },
+        {
+          "ns": "MeetingManagement.meetings",
+          "fields": [
+            "_id"
+          ],
+          "cardinality": 1
+        }
+      ],
+      "isInferred": true
+    },
+    {
+      "id": "12a13a2c-7cb5-410b-9baf-82672363da76",
+      "relationship": [
+        {
+          "ns": "MeetingManagement.protocols",
+          "fields": [
+            "meeting"
+          ],
+          "cardinality": 1
+        },
+        {
+          "ns": "MeetingManagement.meetings",
+          "fields": [
+            "_id"
+          ],
+          "cardinality": 1
+        }
+      ],
+      "isInferred": true
+    },
+    {
+      "id": "5107fe00-820b-44f1-8a60-69cffffddb89",
+      "relationship": [
+        {
+          "ns": "MeetingManagement.archives",
+          "fields": [
+            "minutesSnapshots",
+            "_id"
+          ],
+          "cardinality": 1
+        },
+        {
+          "ns": "MeetingManagement.minutes",
+          "fields": [
+            "_id"
+          ],
+          "cardinality": 1
+        }
+      ],
+      "isInferred": true
+    },
+    {
+      "id": "d3f9aeca-bd78-4f74-88b1-91f50047713f",
+      "relationship": [
+        {
+          "ns": "MeetingManagement.meetings",
+          "fields": [
+            "minutes"
+          ],
+          "cardinality": 1
+        },
+        {
+          "ns": "MeetingManagement.minutes",
+          "fields": [
+            "_id"
+          ],
+          "cardinality": 1
+        }
+      ],
+      "isInferred": true
+    },
+    {
+      "id": "f9ab68a9-581e-40b1-a9ee-095fe87121f0",
+      "relationship": [
+        {
+          "ns": "MeetingManagement.archives",
+          "fields": [
+            "protocolSnapshots",
+            "_id"
+          ],
+          "cardinality": 1
+        },
+        {
+          "ns": "MeetingManagement.protocols",
+          "fields": [
+            "_id"
+          ],
+          "cardinality": 1
+        }
+      ],
+      "isInferred": true
+    },
+    {
+      "id": "5bf62d03-15b9-4aa9-8476-4de33b7084a7",
+      "relationship": [
+        {
+          "ns": "MeetingManagement.archives",
+          "fields": [
+            "createdBy"
+          ],
+          "cardinality": 1
+        },
+        {
+          "ns": "MeetingManagement.users",
+          "fields": [
+            "_id"
+          ],
+          "cardinality": 1
+        }
+      ],
+      "isInferred": true
+    },
+    {
+      "id": "11a63fb4-42e4-424d-8cd6-83b105697d53",
+      "relationship": [
+        {
+          "ns": "MeetingManagement.archives",
+          "fields": [
+            "documents",
+            "uploadedBy"
+          ],
+          "cardinality": 1
+        },
+        {
+          "ns": "MeetingManagement.users",
+          "fields": [
+            "_id"
+          ],
+          "cardinality": 1
+        }
+      ],
+      "isInferred": true
+    },
+    {
+      "id": "ed87e5db-d77f-47ce-bf2e-696f4fe8a858",
+      "relationship": [
+        {
+          "ns": "MeetingManagement.archives",
+          "fields": [
+            "meetingSnapshot",
+            "attendees",
+            "user",
+            "_id"
+          ],
+          "cardinality": 1
+        },
+        {
+          "ns": "MeetingManagement.users",
+          "fields": [
+            "_id"
+          ],
+          "cardinality": 1
+        }
+      ],
+      "isInferred": true
+    },
+    {
+      "id": "a53bdfed-5c35-49c9-97b5-c3fd11afff91",
+      "relationship": [
+        {
+          "ns": "MeetingManagement.archives",
+          "fields": [
+            "meetingSnapshot",
+            "organizer",
+            "_id"
+          ],
+          "cardinality": 1
+        },
+        {
+          "ns": "MeetingManagement.users",
+          "fields": [
+            "_id"
+          ],
+          "cardinality": 1
+        }
+      ],
+      "isInferred": true
+    },
+    {
+      "id": "b17a2340-1a50-47eb-8ebd-1871e9c45659",
+      "relationship": [
+        {
+          "ns": "MeetingManagement.archives",
+          "fields": [
+            "notes",
+            "author"
+          ],
+          "cardinality": 1
+        },
+        {
+          "ns": "MeetingManagement.users",
+          "fields": [
+            "_id"
+          ],
+          "cardinality": 1
+        }
+      ],
+      "isInferred": true
+    },
+    {
+      "id": "50c16bda-4b69-43da-a750-be6703f6d93b",
+      "relationship": [
+        {
+          "ns": "MeetingManagement.meetingrooms",
+          "fields": [
+            "createdBy"
+          ],
+          "cardinality": 1
+        },
+        {
+          "ns": "MeetingManagement.users",
+          "fields": [
+            "_id"
+          ],
+          "cardinality": 1
+        }
+      ],
+      "isInferred": true
+    },
+    {
+      "id": "de3877aa-a741-48de-93f3-4122b278795d",
+      "relationship": [
+        {
+          "ns": "MeetingManagement.meetings",
+          "fields": [
+            "attachments",
+            "uploadedBy"
+          ],
+          "cardinality": 1
+        },
+        {
+          "ns": "MeetingManagement.users",
+          "fields": [
+            "_id"
+          ],
+          "cardinality": 1
+        }
+      ],
+      "isInferred": true
+    },
+    {
+      "id": "3ade49a7-ede8-4e60-912a-faa70fbc7d05",
+      "relationship": [
+        {
+          "ns": "MeetingManagement.meetings",
+          "fields": [
+            "attendees",
+            "user"
+          ],
+          "cardinality": 1
+        },
+        {
+          "ns": "MeetingManagement.users",
+          "fields": [
+            "_id"
+          ],
+          "cardinality": 1
+        }
+      ],
+      "isInferred": true
+    },
+    {
+      "id": "41300172-c7a9-4e26-bfde-9bbf9613b72b",
+      "relationship": [
+        {
+          "ns": "MeetingManagement.meetings",
+          "fields": [
+            "createdBy"
+          ],
+          "cardinality": 1
+        },
+        {
+          "ns": "MeetingManagement.users",
+          "fields": [
+            "_id"
+          ],
+          "cardinality": 1
+        }
+      ],
+      "isInferred": true
+    },
+    {
+      "id": "e0a7a050-c89b-4c60-b081-cfba0021d9c6",
+      "relationship": [
+        {
+          "ns": "MeetingManagement.meetings",
+          "fields": [
+            "notes",
+            "author"
+          ],
+          "cardinality": 1
+        },
+        {
+          "ns": "MeetingManagement.users",
+          "fields": [
+            "_id"
+          ],
+          "cardinality": 1
+        }
+      ],
+      "isInferred": true
+    },
+    {
+      "id": "5a01b90e-37f0-432a-bf3e-016b159eb5f2",
+      "relationship": [
+        {
+          "ns": "MeetingManagement.meetings",
+          "fields": [
+            "organizer"
+          ],
+          "cardinality": 1
+        },
+        {
+          "ns": "MeetingManagement.users",
+          "fields": [
+            "_id"
+          ],
+          "cardinality": 1
+        }
+      ],
+      "isInferred": true
+    },
+    {
+      "id": "82824770-d814-4157-8ba2-f0f15cc30d09",
+      "relationship": [
+        {
+          "ns": "MeetingManagement.meetings",
+          "fields": [
+            "roomApproval",
+            "approvedBy"
+          ],
+          "cardinality": 1
+        },
+        {
+          "ns": "MeetingManagement.users",
+          "fields": [
+            "_id"
+          ],
+          "cardinality": 1
+        }
+      ],
+      "isInferred": true
+    },
+    {
+      "id": "78092961-5c75-4276-a77a-26c4cd9ef667",
+      "relationship": [
+        {
+          "ns": "MeetingManagement.meetings",
+          "fields": [
+            "secretary"
+          ],
+          "cardinality": 1
+        },
+        {
+          "ns": "MeetingManagement.users",
+          "fields": [
+            "_id"
+          ],
+          "cardinality": 1
+        }
+      ],
+      "isInferred": true
+    },
+    {
+      "id": "27bc8657-e6df-4870-baef-dd6d64e79184",
+      "relationship": [
+        {
+          "ns": "MeetingManagement.meetings",
+          "fields": [
+            "summaryMessages",
+            "author"
+          ],
+          "cardinality": 1
+        },
+        {
+          "ns": "MeetingManagement.users",
+          "fields": [
+            "_id"
+          ],
+          "cardinality": 1
+        }
+      ],
+      "isInferred": true
+    },
+    {
+      "id": "859b5758-4653-4c15-a3da-700fa9e3e237",
+      "relationship": [
+        {
+          "ns": "MeetingManagement.meetings",
+          "fields": [
+            "tasks",
+            "assignee"
+          ],
+          "cardinality": 1
+        },
+        {
+          "ns": "MeetingManagement.users",
+          "fields": [
+            "_id"
+          ],
+          "cardinality": 1
+        }
+      ],
+      "isInferred": true
+    },
+    {
+      "id": "719716db-5a52-4f19-a262-7647ce03402a",
+      "relationship": [
+        {
+          "ns": "MeetingManagement.minutes",
+          "fields": [
+            "secretary"
+          ],
+          "cardinality": 1
+        },
+        {
+          "ns": "MeetingManagement.users",
+          "fields": [
+            "_id"
+          ],
+          "cardinality": 1
+        }
+      ],
+      "isInferred": true
+    },
+    {
+      "id": "519743d2-2797-4ce6-8c55-1034c9de4cb9",
+      "relationship": [
+        {
+          "ns": "MeetingManagement.notifications",
+          "fields": [
+            "recipient"
+          ],
+          "cardinality": 1
+        },
+        {
+          "ns": "MeetingManagement.users",
+          "fields": [
+            "_id"
+          ],
+          "cardinality": 1
+        }
+      ],
+      "isInferred": true
+    },
+    {
+      "id": "182cb18b-c962-4928-8746-b4aa79da0e18",
+      "relationship": [
+        {
+          "ns": "MeetingManagement.notifications",
+          "fields": [
+            "sender"
+          ],
+          "cardinality": 1
+        },
+        {
+          "ns": "MeetingManagement.users",
+          "fields": [
+            "_id"
+          ],
+          "cardinality": 1
+        }
+      ],
+      "isInferred": true
+    }
+  ]
+}

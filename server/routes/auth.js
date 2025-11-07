@@ -14,6 +14,8 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { DomainUtils } = require('../config/domainConfig');
+const crypto = require('crypto');
+const emailService = require('../services/emailService');
 
 const router = express.Router();
 
@@ -75,22 +77,8 @@ const registerValidation = [
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
     .withMessage('Mật khẩu phải chứa ít nhất 1 chữ thường, 1 chữ hoa và 1 số'),
   
-  body('department')
-    .optional()
-    .trim()
-    .isLength({ max: 50 })
-    .withMessage('Phòng ban không được vượt quá 50 ký tự'),
-  
-  body('position')
-    .optional()
-    .trim()
-    .isLength({ max: 50 })
-    .withMessage('Chức vụ không được vượt quá 50 ký tự'),
-  
-  body('phone')
-    .optional()
-    .isMobilePhone('vi-VN')
-    .withMessage('Số điện thoại không hợp lệ')
+  // Không cần validation cho department, position, phone, role
+  // Vì đăng ký guest chỉ cần fullName, email, password
 ];
 
 const loginValidation = [
@@ -117,11 +105,21 @@ const handleValidationErrors = (req, res, next) => {
 };
 
 // @route   POST /api/auth/register
-// @desc    Đăng ký người dùng mới
+// @desc    Đăng ký người dùng mới (CHỈ DÀNH CHO GUEST - không cho domain email)
 // @access  Public
 router.post('/register', registerValidation, handleValidationErrors, async (req, res) => {
   try {
-    const { fullName, email, password, department, position, phone, role } = req.body;
+    const { fullName, email, password } = req.body;
+    
+    // Đảm bảo chỉ nhận fullName, email, password - không nhận role, department, position, phone
+
+    // Kiểm tra email KHÔNG phải domain email (guest only)
+    const domainValidation = DomainUtils.validateEmailDomain(email);
+    if (domainValidation.isValid) {
+      return res.status(400).json({
+        message: 'Email công ty không được đăng ký ở đây. Vui lòng dùng chức năng "Đăng ký Email công ty" để đăng ký với email công ty.'
+      });
+    }
 
     // Kiểm tra email đã tồn tại
     const existingUser = await User.findByEmail(email);
@@ -131,15 +129,13 @@ router.post('/register', registerValidation, handleValidationErrors, async (req,
       });
     }
 
-    // Tạo user mới
+    // Tạo user mới - CHỈ DÀNH CHO KHÁCH (GUEST)
+    // Force role = 'guest' - không cho phép override
     const userData = {
-      fullName,
-      email,
+      fullName: fullName.trim(),
+      email: email.trim().toLowerCase(),
       password,
-      department,
-      position,
-      phone,
-      role: role || 'employee' // Cho phép user chọn role
+      role: 'guest' // Luôn là 'guest' cho đăng ký thường, không thể thay đổi
     };
 
 
@@ -164,6 +160,83 @@ router.post('/register', registerValidation, handleValidationErrors, async (req,
 
   } catch (error) {
     console.error('Register error:', error);
+    
+    if (error.code === 11000) {
+      return res.status(400).json({
+        message: 'Email đã được sử dụng'
+      });
+    }
+    
+    res.status(500).json({
+      message: 'Lỗi server khi đăng ký',
+      error: process.env.NODE_ENV === 'development' ? error.message : {}
+    });
+  }
+});
+
+// @route   POST /api/auth/register-domain
+// @desc    Đăng ký người dùng với email công ty (pending approval)
+// @access  Public
+router.post('/register-domain', registerValidation, handleValidationErrors, async (req, res) => {
+  try {
+    const { fullName, email, password, department, position, phone } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        message: 'Email là bắt buộc'
+      });
+    }
+
+    // Validate domain - phải là domain hợp lệ
+    const validation = DomainUtils.validateEmailDomain(email);
+    
+    if (!validation.isValid) {
+      return res.status(400).json({
+        message: validation.error || 'Domain email không hợp lệ'
+      });
+    }
+
+    // Kiểm tra email đã tồn tại
+    const existingUser = await User.findByEmail(email);
+    if (existingUser) {
+      return res.status(400).json({
+        message: 'Email đã được sử dụng'
+      });
+    }
+
+    // Tạo user mới với trạng thái pending
+    const userData = {
+      fullName: fullName || email.split('@')[0],
+      email: email.toLowerCase(),
+      password,
+      role: validation.role,
+      emailDomain: validation.domain,
+      autoAssignedRole: validation.role,
+      isFromDomainAuth: true,
+      domainPermissions: validation.permissions,
+      department: department || validation.department,
+      position: position || validation.position,
+      phone,
+      approvalStatus: 'pending', // Chờ admin phê duyệt
+      isActive: true, // Active nhưng chưa được approve
+      emailVerified: false
+    };
+
+    const user = new User(userData);
+    await user.save();
+
+    // TODO: Gửi thông báo cho admin/manager về user mới
+    // Có thể dùng notification system hoặc email
+
+    res.status(201).json({
+      message: 'Đăng ký thành công! Tài khoản đang chờ phê duyệt từ admin.',
+      user: user.toPublicJSON(),
+      approvalStatus: 'pending',
+      note: 'Bạn sẽ nhận được thông báo khi tài khoản được phê duyệt.'
+    });
+
+  } catch (error) {
+    console.error('Register domain error:', error);
     
     if (error.code === 11000) {
       return res.status(400).json({
@@ -284,6 +357,122 @@ router.post('/refresh', async (req, res) => {
   }
 });
 
+// @route   POST /api/auth/logout
+// @desc    Logout current user (stateless JWT) - client should clear tokens
+// @access  Private (token optional for audit)
+router.post('/logout', (req, res) => {
+  try {
+    const authHeader = req.headers['authorization'] || '';
+    const hasToken = Boolean(authHeader && authHeader.startsWith('Bearer '));
+
+    // With stateless JWT, logout is handled on client by clearing tokens.
+    // Here we simply acknowledge the request so tests/clients can await it.
+    return res.json({
+      message: 'Đăng xuất thành công',
+      acknowledged: true,
+      hadAuthHeader: hasToken
+    });
+  } catch (error) {
+    console.error('Logout error:', error);
+    return res.status(500).json({ message: 'Lỗi server khi đăng xuất' });
+  }
+});
+
+// ===================== Forgot / Reset Password =====================
+
+// @route   POST /api/auth/forgot-password
+// @desc    Generate password reset token and (pretend) send email
+// @access  Public
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: 'Email là bắt buộc' });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase() }).select('+resetPasswordToken +resetPasswordExpires');
+
+    // Trả 200 dù không tìm thấy để tránh lộ dữ liệu
+    if (!user) {
+      return res.json({ message: 'Nếu email hợp lệ, link đặt lại mật khẩu đã được gửi' });
+    }
+
+    // Tạo token và lưu hash + expiry
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    user.resetPasswordToken = tokenHash;
+    user.resetPasswordExpires = Date.now() + 15 * 60 * 1000; // 15 phút
+    await user.save();
+
+    const resetUrl = `${CLIENT_URL}/reset-password?token=${rawToken}`;
+
+    // Gửi email thật nếu đã cấu hình SMTP, fallback log khi chưa bật
+    const html = `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+        <h2>Đặt lại mật khẩu</h2>
+        <p>Xin chào ${user.fullName || user.email},</p>
+        <p>Bạn (hoặc ai đó) đã yêu cầu đặt lại mật khẩu cho tài khoản của bạn.</p>
+        <p>Nhấn vào nút bên dưới để đặt lại mật khẩu (hiệu lực trong 15 phút):</p>
+        <p>
+          <a href="${resetUrl}" style="display:inline-block;padding:12px 24px;background:#1976d2;color:#fff;text-decoration:none;border-radius:6px;">Đặt lại mật khẩu</a>
+        </p>
+        <p>Nếu bạn không yêu cầu, hãy bỏ qua email này.</p>
+      </div>
+    `;
+
+    await emailService.sendEmail({
+      to: user.email,
+      subject: 'Đặt lại mật khẩu',
+      html,
+      text: `Đặt lại mật khẩu: ${resetUrl}`
+    });
+
+    // Luôn trả 200 để tránh lộ dữ liệu
+    return res.json({ message: 'Nếu email hợp lệ, link đặt lại mật khẩu đã được gửi' });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    return res.status(500).json({ message: 'Lỗi server khi xử lý quên mật khẩu' });
+  }
+});
+
+// @route   POST /api/auth/reset-password
+// @desc    Reset password using the reset token
+// @access  Public
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, password, confirmPassword } = req.body;
+    if (!token || !password || !confirmPassword) {
+      return res.status(400).json({ message: 'Thiếu dữ liệu' });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ message: 'Mật khẩu phải có ít nhất 6 ký tự' });
+    }
+    if (password !== confirmPassword) {
+      return res.status(400).json({ message: 'Mật khẩu xác nhận không khớp' });
+    }
+
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const user = await User.findOne({
+      resetPasswordToken: tokenHash,
+      resetPasswordExpires: { $gt: Date.now() }
+    }).select('+password +resetPasswordToken +resetPasswordExpires');
+
+    if (!user) {
+      return res.status(400).json({ message: 'Token không hợp lệ hoặc đã hết hạn' });
+    }
+
+    user.password = password; // pre-save hook sẽ hash
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    return res.json({ message: 'Đổi mật khẩu thành công. Vui lòng đăng nhập lại.' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    return res.status(500).json({ message: 'Lỗi server khi đặt lại mật khẩu' });
+  }
+});
+
 // @route   GET /api/auth/test-token
 // @desc    Test token validation
 // @access  Public
@@ -344,11 +533,11 @@ router.get('/me', authenticateToken, async (req, res) => {
       },
       '507f1f77bcf86cd799439013': {
         _id: '507f1f77bcf86cd799439013',
-        fullName: 'Nguyễn Văn Assistant',
-        email: 'assistant@example.com',
-        role: 'assistant',
+        fullName: 'Nguyễn Văn Secretary',
+        email: 'secretary@example.com',
+        role: 'secretary',
         department: 'Administration',
-        position: 'Administrative Assistant',
+        position: 'Secretary',
         phone: '0903456789',
         isActive: true,
         emailVerified: true
@@ -557,15 +746,15 @@ router.post('/test-login', loginValidation, handleValidationErrors, async (req, 
           emailVerified: true
         }
       },
-      'assistant@example.com': {
+      'secretary@example.com': {
         password: 'Assistant123',
         user: {
           _id: '507f1f77bcf86cd799439013',
-          fullName: 'Nguyễn Văn Assistant',
-          email: 'assistant@example.com',
-          role: 'assistant',
+          fullName: 'Nguyễn Văn Secretary',
+          email: 'secretary@example.com',
+          role: 'secretary',
           department: 'Administration',
-          position: 'Administrative Assistant',
+          position: 'Secretary',
           phone: '0903456789',
           isActive: true,
           emailVerified: true
@@ -646,11 +835,11 @@ router.get('/test-me', authenticateToken, async (req, res) => {
       },
       '507f1f77bcf86cd799439013': {
         _id: '507f1f77bcf86cd799439013',
-        fullName: 'Nguyễn Văn Assistant',
-        email: 'assistant@example.com',
-        role: 'assistant',
+        fullName: 'Nguyễn Văn Secretary',
+        email: 'secretary@example.com',
+        role: 'secretary',
         department: 'Administration',
-        position: 'Administrative Assistant',
+        position: 'Secretary',
         phone: '0903456789',
         isActive: true,
         emailVerified: true
@@ -851,30 +1040,6 @@ router.get('/github/callback',
   }
 );
 
-// Microsoft OAuth Routes
-router.get('/microsoft',
-  passport.authenticate('microsoft', { scope: ['user.read', 'openid', 'profile', 'email'] })
-);
-
-router.get('/microsoft/callback',
-  passport.authenticate('microsoft', { session: false }),
-  (req, res) => {
-    try {
-      const token = generateToken(req.user._id);
-      const refreshToken = generateRefreshToken(req.user._id);
-      
-      // Update last login
-      req.user.lastLogin = new Date();
-      req.user.save();
-      
-      res.redirect(`${CLIENT_URL}/oauth/callback?token=${token}&refreshToken=${refreshToken}&user=${encodeURIComponent(JSON.stringify(req.user.toPublicJSON()))}`);
-    } catch (error) {
-      console.error('Microsoft callback error:', error);
-      res.redirect(`${CLIENT_URL}/login?error=microsoft_auth_failed`);
-    }
-  }
-);
-
 // Domain-based Authentication Routes
 // @route   POST /api/auth/validate-domain
 // @desc    Validate email domain and return role info
@@ -919,16 +1084,23 @@ router.post('/validate-domain', async (req, res) => {
 });
 
 // @route   POST /api/auth/login-with-domain
-// @desc    Login with domain email (for OAuth integration)
+// @desc    Login with domain email (REQUIRES PASSWORD for security)
 // @access  Public
 router.post('/login-with-domain', async (req, res) => {
   try {
     console.log('🔍 Domain login request body:', req.body);
-    const { email, fullName, avatar } = req.body;
+    const { email, password, fullName, avatar } = req.body;
     
     if (!email) {
       return res.status(400).json({
         message: 'Email là bắt buộc'
+      });
+    }
+    
+    // ⚠️ SECURITY: Require password
+    if (!password) {
+      return res.status(400).json({
+        message: 'Mật khẩu là bắt buộc cho đăng nhập email công ty'
       });
     }
     
@@ -944,53 +1116,68 @@ router.post('/login-with-domain', async (req, res) => {
     // Find existing user
     let user = await User.findOne({ email: email.toLowerCase() });
     
+    // ⚠️ SECURITY: User must be created by admin first
     if (!user) {
-      // Create new user with domain role
-      user = new User({
-        email: email.toLowerCase(),
-        fullName: fullName || email.split('@')[0],
-        role: validation.role,
-        emailDomain: validation.domain,
-        autoAssignedRole: validation.role,
-        isFromDomainAuth: true,
-        domainPermissions: validation.permissions,
-        department: validation.department,
-        position: validation.position,
-        emailVerified: true,
-        password: Math.random().toString(36).slice(-8), // Random password
-        avatar: avatar || ''
+      return res.status(401).json({
+        message: 'Tài khoản chưa được tạo. Vui lòng liên hệ admin để được cấp tài khoản.'
       });
-      
-      await user.save();
-    } else {
-      // Update existing user with domain info if needed
-      if (!user.isFromDomainAuth) {
-        user.emailDomain = validation.domain;
-        user.autoAssignedRole = validation.role;
-        user.isFromDomainAuth = true;
-        user.domainPermissions = validation.permissions;
-        user.department = validation.department;
-        user.position = validation.position;
-        user.emailVerified = true;
-        
-        await user.save();
-      }
-      
-      // Update role if changed
-      if (user.autoAssignedRole !== validation.role) {
-        user.autoAssignedRole = validation.role;
-        user.role = validation.role;
-        await user.save();
-      }
     }
     
-    // Generate tokens
-    const token = generateToken(user._id);
-    const refreshToken = generateRefreshToken(user._id);
+    // Validate password - User model has password select: false, need to fetch with password
+    try {
+      const userWithPassword = await User.findById(user._id).select('+password').lean();
+      
+      if (!userWithPassword || !userWithPassword.password) {
+        console.error('⚠️ User exists but has no password field');
+        return res.status(401).json({
+          message: 'Tài khoản chưa có mật khẩu. Vui lòng liên hệ admin để được cấp tài khoản.'
+        });
+      }
+      
+      const isMatch = await bcrypt.compare(password, userWithPassword.password);
+      
+      if (!isMatch) {
+        return res.status(401).json({
+          message: 'Mật khẩu không đúng'
+        });
+      }
+    } catch (compareError) {
+      console.error('Password comparison error:', compareError);
+      return res.status(401).json({
+        message: 'Lỗi xác thực mật khẩu. Vui lòng thử lại.'
+      });
+    }
+    
+    // Check if account is active
+    if (!user.isActive) {
+      return res.status(401).json({
+        message: 'Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ admin.'
+      });
+    }
+
+    // Check approval status for domain users
+    if (user.isFromDomainAuth && user.approvalStatus !== 'approved') {
+      if (user.approvalStatus === 'pending') {
+        return res.status(403).json({
+          message: 'Tài khoản đang chờ phê duyệt. Vui lòng đợi admin phê duyệt.',
+          approvalStatus: 'pending'
+        });
+      } else if (user.approvalStatus === 'rejected') {
+        return res.status(403).json({
+          message: 'Tài khoản đã bị từ chối. Vui lòng liên hệ admin.',
+          approvalStatus: 'rejected',
+          rejectionReason: user.rejectionReason
+        });
+      }
+    }
     
     // Update last login
     user.lastLogin = new Date();
     await user.save();
+    
+    // Generate tokens
+    const token = generateToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
     
     res.json({
       message: 'Đăng nhập thành công',
@@ -1053,7 +1240,19 @@ router.post('/google-token', async (req, res) => {
     }
 
     if (!user) {
-      // Tạo mới user với vai trò mặc định
+      // Validate domain để xác định role
+      const domainValidation = DomainUtils.validateEmailDomain(payload.email);
+      let userRole = 'guest'; // Mặc định là guest cho OAuth
+      
+      if (domainValidation.isValid) {
+        // Domain được hỗ trợ (domain công ty), sử dụng role từ cấu hình
+        userRole = domainValidation.role;
+      } else {
+        // Domain không được hỗ trợ (Gmail, Yahoo, etc.), đây là guest
+        console.log('⚠️  Domain không trong danh sách allowed (guest), sử dụng role: guest');
+      }
+      
+      // Tạo mới user
       try {
         user = await User.create({
           email: payload.email,
@@ -1062,7 +1261,13 @@ router.post('/google-token', async (req, res) => {
           googleId: payload.sub,
           emailVerified: true,
           password: Math.random().toString(36).slice(-8),
-          role: 'employee'
+          role: userRole,
+          emailDomain: domainValidation.isValid ? domainValidation.domain : 'oauth',
+          autoAssignedRole: userRole,
+          isFromDomainAuth: domainValidation.isValid,
+          domainPermissions: domainValidation.isValid ? domainValidation.permissions : [],
+          department: domainValidation.isValid ? domainValidation.department : null,
+          position: domainValidation.isValid ? domainValidation.position : null
         });
       } catch (createErr) {
         console.error('Error creating user:', createErr);
@@ -1071,11 +1276,15 @@ router.post('/google-token', async (req, res) => {
 
     // Nếu Mongo lỗi, tạo user demo đơn giản
     if (!user) {
+      // Check domain cho demo user
+      const domainValidation = DomainUtils.validateEmailDomain(payload.email);
+      const userRole = domainValidation.isValid ? domainValidation.role : 'guest';
+      
       user = {
         _id: payload.sub,
         email: payload.email,
         fullName: payload.name,
-        role: 'employee'
+        role: userRole
       };
     }
 

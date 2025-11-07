@@ -78,15 +78,9 @@ const config = {
     enabled: !!(process.env.EMAIL_USER && process.env.EMAIL_PASS)
   },
   
-  // OAuth
+  // OAuth (disabled Microsoft OAuth)
   oauth: {
-    microsoft: {
-      clientId: process.env.MICROSOFT_CLIENT_ID,
-      clientSecret: process.env.MICROSOFT_CLIENT_SECRET,
-      callbackURL: process.env.MICROSOFT_CALLBACK_URL || 'http://localhost:5000/api/auth/microsoft/callback',
-      tenantId: process.env.MICROSOFT_TENANT_ID || 'common',
-      enabled: !!(process.env.MICROSOFT_CLIENT_ID && process.env.MICROSOFT_CLIENT_SECRET)
-    }
+    // Microsoft OAuth has been removed
   },
   
   // Features

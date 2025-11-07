@@ -533,9 +533,9 @@ router.get('/', authenticateToken, checkDepartmentAccess, fixOldMeetings, async 
     // Quyền truy cập
     let orConditions = [];
 
-    if (req.user.role === 'admin' || req.user.role === 'assistant') {
-      orConditions = [{}]; // admin và assistant thấy tất cả
-      console.log('🔍 Admin/Assistant - can see all meetings');
+    if (req.user.role === 'admin' || req.user.role === 'secretary') {
+      orConditions = [{}]; // admin và secretary thấy tất cả
+      console.log('🔍 Admin/Secretary - can see all meetings');
     } else if (req.user.role === 'manager' || req.user.role === 'secretary') {
       // Manager và Secretary thấy:
       // 1. Họp mình tổ chức
@@ -649,7 +649,7 @@ router.get('/', authenticateToken, checkDepartmentAccess, fixOldMeetings, async 
 });
 
 // ===== Decisions & Voting =====
-// Tạo quyết định (chỉ thư ký của cuộc họp, organizer, admin, assistant)
+// Tạo quyết định (chỉ thư ký của cuộc họp, organizer, admin, secretary)
 router.post('/:id/decisions', authenticateToken, [
   body('title').isString().trim().notEmpty().withMessage('Tiêu đề là bắt buộc'),
   body('description').optional().isString()
@@ -669,7 +669,7 @@ router.post('/:id/decisions', authenticateToken, [
 
     const isSecretary = meeting.secretary && meeting.secretary.toString() === req.user._id.toString();
     const isOrganizer = meeting.organizer && meeting.organizer.toString() === req.user._id.toString();
-    const isPrivileged = ['admin', 'assistant'].includes(req.user.role);
+    const isPrivileged = ['admin', 'secretary'].includes(req.user.role);
     if (!(isSecretary || isOrganizer || isPrivileged)) {
       return res.status(403).json({ message: 'Chỉ thư ký/organizer mới được tạo quyết định' });
     }
@@ -713,7 +713,7 @@ router.post('/:id/decisions/:decisionId/vote', authenticateToken, [
     const isAttendee = meeting.attendees.some(a => a.user.toString() === req.user._id.toString());
     const isOrganizer = meeting.organizer && meeting.organizer.toString() === req.user._id.toString();
     const isSecretary = meeting.secretary && meeting.secretary.toString() === req.user._id.toString();
-    if (!(isAttendee || isOrganizer || isSecretary || ['admin','assistant'].includes(req.user.role))) {
+    if (!(isAttendee || isOrganizer || isSecretary || ['admin','secretary'].includes(req.user.role))) {
       return res.status(403).json({ message: 'Bạn không thuộc cuộc họp này' });
     }
 
@@ -746,7 +746,7 @@ router.post('/:id/decisions/:decisionId/vote', authenticateToken, [
   }
 });
 
-// Cập nhật tiêu đề/mô tả quyết định (organizer/secretary/admin/assistant)
+// Cập nhật tiêu đề/mô tả quyết định (organizer/secretary/admin/secretary)
 router.put('/:id/decisions/:decisionId', authenticateToken, [
   body('title').optional().isString().trim().notEmpty(),
   body('description').optional().isString()
@@ -757,7 +757,7 @@ router.put('/:id/decisions/:decisionId', authenticateToken, [
 
     const isOrganizer = meeting.organizer && meeting.organizer.toString() === req.user._id.toString();
     const isSecretary = meeting.secretary && meeting.secretary.toString() === req.user._id.toString();
-    const isPrivileged = ['admin','assistant'].includes(req.user.role);
+    const isPrivileged = ['admin','secretary'].includes(req.user.role);
     if (!(isOrganizer || isSecretary || isPrivileged)) {
       return res.status(403).json({ message: 'Bạn không có quyền chỉnh sửa quyết định' });
     }
@@ -781,7 +781,7 @@ router.put('/:id/decisions/:decisionId', authenticateToken, [
   }
 });
 
-// Xóa quyết định (organizer/secretary/admin/assistant)
+// Xóa quyết định (organizer/secretary/admin/secretary)
 router.delete('/:id/decisions/:decisionId', authenticateToken, async (req, res) => {
   try {
     const meeting = await Meeting.findById(req.params.id);
@@ -789,7 +789,7 @@ router.delete('/:id/decisions/:decisionId', authenticateToken, async (req, res) 
 
     const isOrganizer = meeting.organizer && meeting.organizer.toString() === req.user._id.toString();
     const isSecretary = meeting.secretary && meeting.secretary.toString() === req.user._id.toString();
-    const isPrivileged = ['admin','assistant'].includes(req.user.role);
+    const isPrivileged = ['admin','secretary'].includes(req.user.role);
     if (!(isOrganizer || isSecretary || isPrivileged)) {
       return res.status(403).json({ message: 'Bạn không có quyền xóa quyết định' });
     }
@@ -808,7 +808,7 @@ router.delete('/:id/decisions/:decisionId', authenticateToken, async (req, res) 
   }
 });
 
-// Chốt kết quả quyết định (organizer có toàn quyền; thư ký được phép nếu organizer hoặc admin/assistant)
+// Chốt kết quả quyết định (organizer có toàn quyền; thư ký được phép nếu organizer hoặc admin/secretary)
 router.post('/:id/decisions/:decisionId/finalize', authenticateToken, async (req, res) => {
   try {
     const meeting = await Meeting.findById(req.params.id);
@@ -816,7 +816,7 @@ router.post('/:id/decisions/:decisionId/finalize', authenticateToken, async (req
 
     const isOrganizer = meeting.organizer && meeting.organizer.toString() === req.user._id.toString();
     const isSecretary = meeting.secretary && meeting.secretary.toString() === req.user._id.toString();
-    const isPrivileged = ['admin','assistant'].includes(req.user.role);
+    const isPrivileged = ['admin','secretary'].includes(req.user.role);
     if (!(isOrganizer || isSecretary || isPrivileged)) {
       return res.status(403).json({ message: 'Bạn không có quyền chốt quyết định' });
     }
@@ -856,7 +856,7 @@ router.post('/:id/tasks', authenticateToken, [
 
     const isOrganizer = meeting.organizer && meeting.organizer.toString() === req.user._id.toString();
     const isSecretary = meeting.secretary && meeting.secretary.toString() === req.user._id.toString();
-    const isPrivileged = ['admin','assistant','manager'].includes(req.user.role);
+    const isPrivileged = ['admin','secretary','manager'].includes(req.user.role);
     if (!(isOrganizer || isSecretary || isPrivileged)) {
       return res.status(403).json({ message: 'Bạn không có quyền tạo nhiệm vụ' });
     }
@@ -895,7 +895,7 @@ router.put('/:id/tasks/:taskId/toggle', authenticateToken, async (req, res) => {
     const task = meeting.tasks.id(req.params.taskId);
     if (!task) return res.status(404).json({ message: 'Nhiệm vụ không tồn tại' });
 
-    const canToggle = ['admin','assistant','manager'].includes(req.user.role) ||
+    const canToggle = ['admin','secretary','manager'].includes(req.user.role) ||
       meeting.organizer.toString() === req.user._id.toString() ||
       (task.assignee && task.assignee.toString() === req.user._id.toString());
     if (!canToggle) return res.status(403).json({ message: 'Bạn không có quyền cập nhật nhiệm vụ' });
@@ -1281,8 +1281,8 @@ router.put('/:id', authenticateToken, checkResourceOwnership('organizer'), updat
     }
 
     // Kiểm tra quyền chỉnh sửa
-    const isOwnerOrAdmin = req.user.role === 'admin' || req.user.role === 'assistant' || isUserMatch(meeting.organizer, req.user._id);
-    const canEditAgenda = ['admin', 'manager', 'secretary', 'assistant', 'technician'].includes(req.user.role);
+    const isOwnerOrAdmin = req.user.role === 'admin' || req.user.role === 'secretary' || isUserMatch(meeting.organizer, req.user._id);
+    const canEditAgenda = ['admin', 'manager', 'secretary', 'secretary', 'technician'].includes(req.user.role);
     
     // Nếu chỉ update agenda, secretary/manager có thể edit
     const onlyUpdatingAgenda = Object.keys(req.body).length === 1 && req.body.agenda !== undefined;
@@ -1362,11 +1362,11 @@ router.put('/:id', authenticateToken, checkResourceOwnership('organizer'), updat
         
         const attendeeUser = attendeeUsers.find(u => u._id.toString() === userId.toString());
         
-        // Chủ trì, thư ký được chỉ định, hoặc user có role secretary/assistant tự động accepted
+        // Chủ trì, thư ký được chỉ định, hoặc user có role secretary/secretary tự động accepted
         const isOrganizer = userId.toString() === (organizer || meeting.organizer).toString();
         const isAssignedSecretary = (secretary && userId.toString() === secretary.toString()) ||
                                    (meeting.secretary && userId.toString() === meeting.secretary.toString());
-        const hasSecretaryRole = attendeeUser && ['secretary', 'assistant'].includes(attendeeUser.role);
+        const hasSecretaryRole = attendeeUser && ['secretary', 'secretary'].includes(attendeeUser.role);
         
         const shouldAutoAccept = isOrganizer || isAssignedSecretary || hasSecretaryRole;
         
@@ -1470,7 +1470,7 @@ router.put('/:id', authenticateToken, checkResourceOwnership('organizer'), updat
 
 // @route   PUT /api/meetings/:id/room-approval
 // @desc    Kỹ thuật duyệt hoặc từ chối phòng họp
-// @access  Technician/Admin/Assistant
+// @access  Technician/Admin/Secretary
 router.put('/:id/room-approval', authenticateToken, requireTechnicianOrAdmin, async (req, res) => {
   try {
     const { status, note } = req.body; // approved | rejected
@@ -1642,10 +1642,10 @@ router.put('/:id/close', authenticateToken, async (req, res) => {
       });
     }
 
-    // Kiểm tra quyền: Admin, Assistant, Manager hoặc người tổ chức
+    // Kiểm tra quyền: Admin, Secretary, Manager hoặc người tổ chức
     const canClose = 
       req.user.role === 'admin' ||
-      req.user.role === 'assistant' ||
+      req.user.role === 'secretary' ||
       req.user.role === 'manager' ||
       (req.user.role === 'secretary' && meeting.organizer.toString() === req.user._id.toString()) ||
       meeting.organizer.toString() === req.user._id.toString();
@@ -1712,7 +1712,7 @@ router.post('/:id/files', authenticateToken, upload.single('file'), handleUpload
       meeting.organizer.toString() === req.user._id.toString() ||
       meeting.attendees.some(att => att.user.toString() === req.user._id.toString()) ||
       req.user.role === 'admin' ||
-      req.user.role === 'assistant';
+      req.user.role === 'secretary';
 
     if (!canUpload) {
       return res.status(403).json({
@@ -1895,7 +1895,7 @@ router.delete('/:id/files/:fileId', authenticateToken, async (req, res) => {
       attachment.uploadedBy?.toString() === req.user._id.toString() ||
       meeting.organizer.toString() === req.user._id.toString() ||
       req.user.role === 'admin' ||
-      req.user.role === 'assistant';
+      req.user.role === 'secretary';
 
     if (!canDelete) {
       return res.status(403).json({
@@ -1946,10 +1946,10 @@ router.post('/:id/summary-image', authenticateToken, upload.single('summaryImage
       });
     }
 
-    // Kiểm tra quyền upload summary: secretary, manager, admin, assistant hoặc organizer
+    // Kiểm tra quyền upload summary: secretary, manager, admin, secretary hoặc organizer
     const canUploadSummary = 
       req.user.role === 'admin' ||
-      req.user.role === 'assistant' ||
+      req.user.role === 'secretary' ||
       req.user.role === 'manager' ||
       req.user.role === 'secretary' ||
       meeting.organizer.toString() === req.user._id.toString();
@@ -2034,7 +2034,7 @@ router.delete('/:id/summary-image', authenticateToken, async (req, res) => {
     // Kiểm tra quyền xóa ảnh summary
     const canDeleteSummaryImage = 
       req.user.role === 'admin' ||
-      req.user.role === 'assistant' ||
+      req.user.role === 'secretary' ||
       req.user.role === 'manager' ||
       req.user.role === 'secretary' ||
       meeting.organizer.toString() === req.user._id.toString();
@@ -2100,7 +2100,7 @@ router.put('/:id/summary', authenticateToken, [
     // Kiểm tra quyền cập nhật summary
     const canUpdateSummary = 
       req.user.role === 'admin' ||
-      req.user.role === 'assistant' ||
+      req.user.role === 'secretary' ||
       req.user.role === 'manager' ||
       req.user.role === 'secretary' ||
       meeting.organizer.toString() === req.user._id.toString();
@@ -2155,14 +2155,13 @@ router.post('/:id/invite', authenticateToken, [
     const isAdmin = req.user.role === 'admin';
     const isManager = req.user.role === 'manager';
     const isSecretary = req.user.role === 'secretary';
-    const isAssistant = req.user.role === 'assistant';
-    const canInvite = isOrganizer || isAdmin || isManager || isSecretary || isAssistant;
+    const canInvite = isOrganizer || isAdmin || isManager || isSecretary;
 
     
 
     if (!canInvite) {
       return res.status(403).json({
-        message: `Bạn không có quyền mời người tham gia cuộc họp này. Chỉ người tổ chức, admin, manager, assistant, technician hoặc secretary mới có thể mời.`
+        message: `Bạn không có quyền mời người tham gia cuộc họp này. Chỉ người tổ chức, admin, manager, secretary, technician hoặc secretary mới có thể mời.`
       });
     }
 
@@ -2253,11 +2252,11 @@ router.delete('/:id/attendees/:userId', authenticateToken, async (req, res) => {
       req.user.role === 'admin' ||
       req.user.role === 'manager' ||
       req.user.role === 'secretary' ||
-      req.user.role === 'assistant';
+      req.user.role === 'secretary';
 
     if (!canRemove) {
       return res.status(403).json({
-        message: 'Bạn không có quyền loại bỏ người tham gia khỏi cuộc họp này. Chỉ người tổ chức, admin, manager, assistant, technician hoặc secretary mới có thể xóa người tham gia.'
+        message: 'Bạn không có quyền loại bỏ người tham gia khỏi cuộc họp này. Chỉ người tổ chức, admin, manager, secretary, technician hoặc secretary mới có thể xóa người tham gia.'
       });
     }
 
@@ -4120,8 +4119,8 @@ router.get('/:id/minutes', authenticateToken, async (req, res) => {
     
     if (!meeting) return res.status(404).json({ message: 'Cuộc họp không tồn tại' });
 
-    // Kiểm tra quyền xem: admin, manager, secretary, assistant, technician, organizer hoặc attendee
-    const canView = req.user.role === 'admin' || req.user.role === 'manager' || req.user.role === 'secretary' || req.user.role === 'assistant' || req.user.role === 'technician' || meeting.organizer.toString() === req.user._id.toString() || meeting.attendees.some(att => att.user.toString() === req.user._id.toString());
+    // Kiểm tra quyền xem: admin, manager, secretary, secretary, technician, organizer hoặc attendee
+    const canView = req.user.role === 'admin' || req.user.role === 'manager' || req.user.role === 'secretary' || req.user.role === 'secretary' || req.user.role === 'technician' || meeting.organizer.toString() === req.user._id.toString() || meeting.attendees.some(att => att.user.toString() === req.user._id.toString());
 
     if (!canView) return res.status(403).json({ message: 'Bạn không có quyền xem biên bản' });
 
@@ -4140,8 +4139,8 @@ router.post('/:id/minutes', authenticateToken, async (req, res) => {
     const meeting = await Meeting.findById(req.params.id);
     if (!meeting) return res.status(404).json({ message: 'Cuộc họp không tồn tại' });
 
-    // Cho phép admin, manager, assistant, technician hoặc bất kỳ secretary tạo biên bản
-    if (!['admin', 'manager', 'secretary', 'assistant', 'technician'].includes(req.user.role)) {
+    // Cho phép admin, manager, secretary, technician hoặc bất kỳ secretary tạo biên bản
+    if (!['admin', 'manager', 'secretary', 'secretary', 'technician'].includes(req.user.role)) {
       return res.status(403).json({ message: 'Bạn không có quyền tạo biên bản' });
     }
 
@@ -4176,8 +4175,8 @@ router.put('/:id/minutes/:minutesId', authenticateToken, async (req, res) => {
     const meeting = await Meeting.findById(req.params.id);
     if (!meeting) return res.status(404).json({ message: 'Cuộc họp không tồn tại' });
 
-    // Cho phép admin, manager, assistant, technician hoặc bất kỳ secretary cập nhật biên bản
-    if (!['admin', 'manager', 'secretary', 'assistant', 'technician'].includes(req.user.role)) {
+    // Cho phép admin, manager, secretary, technician hoặc bất kỳ secretary cập nhật biên bản
+    if (!['admin', 'manager', 'secretary', 'secretary', 'technician'].includes(req.user.role)) {
       return res.status(403).json({ message: 'Bạn không có quyền cập nhật biên bản' });
     }
 
@@ -4210,8 +4209,8 @@ router.post('/:id/minutes/:minutesId/submit', authenticateToken, async (req, res
     const meeting = await Meeting.findById(req.params.id);
     if (!meeting) return res.status(404).json({ message: 'Cuộc họp không tồn tại' });
 
-    // Cho phép admin, manager, assistant, technician hoặc bất kỳ secretary gửi duyệt
-    if (!['admin', 'manager', 'secretary', 'assistant', 'technician'].includes(req.user.role)) {
+    // Cho phép admin, manager, secretary, technician hoặc bất kỳ secretary gửi duyệt
+    if (!['admin', 'manager', 'secretary', 'secretary', 'technician'].includes(req.user.role)) {
       return res.status(403).json({ message: 'Bạn không có quyền gửi duyệt biên bản' });
     }
 
@@ -4269,8 +4268,8 @@ router.delete('/:id/minutes/:minutesId', authenticateToken, async (req, res) => 
       return res.status(404).json({ message: 'Cuộc họp không tồn tại' });
     }
 
-    // Cho phép admin, manager, assistant, technician hoặc secretary xoá; và organizer
-    if (!['admin', 'manager', 'secretary', 'assistant', 'technician'].includes(req.user.role)
+    // Cho phép admin, manager, secretary, technician hoặc secretary xoá; và organizer
+    if (!['admin', 'manager', 'secretary', 'secretary', 'technician'].includes(req.user.role)
         && meeting.organizer.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Bạn không có quyền xoá biên bản' });
     }
@@ -4797,7 +4796,7 @@ router.post('/fix-created-by', authenticateToken, async (req, res) => {
 });
 
 // @route   POST /api/meetings/fix-secretary-status
-// @desc    Fix trạng thái cho secretary/assistant trong meetings hiện có
+// @desc    Fix trạng thái cho secretary/secretary trong meetings hiện có
 // @access  Private (Admin only)
 router.post('/fix-secretary-status', authenticateToken, async (req, res) => {
   try {
@@ -4816,10 +4815,10 @@ router.post('/fix-secretary-status', authenticateToken, async (req, res) => {
       let hasChanges = false;
       
       for (const attendee of meeting.attendees) {
-        // Kiểm tra nếu attendee có role secretary/assistant nhưng status vẫn là invited
+        // Kiểm tra nếu attendee có role secretary/secretary nhưng status vẫn là invited
         const user = await User.findById(attendee.user).select('role');
         
-        if (user && ['secretary', 'assistant'].includes(user.role) && attendee.status === 'invited') {
+        if (user && ['secretary', 'secretary'].includes(user.role) && attendee.status === 'invited') {
           attendee.status = 'accepted';
           attendee.responseDate = new Date();
           hasChanges = true;
@@ -5258,7 +5257,7 @@ router.post('/:id/notes', authenticateToken, [
       meeting.organizer.toString() === req.user._id.toString() ||
       meeting.attendees.some(att => att.user.toString() === req.user._id.toString()) ||
       req.user.role === 'admin' ||
-      req.user.role === 'assistant';
+      req.user.role === 'secretary';
 
     if (!canAddNote) {
       return res.status(403).json({
@@ -5327,7 +5326,7 @@ router.delete('/:id/notes/:noteId', authenticateToken, async (req, res) => {
     // Kiểm tra quyền xóa (author hoặc admin)
     const canDelete = 
       req.user.role === 'admin' ||
-      req.user.role === 'assistant' ||
+      req.user.role === 'secretary' ||
       note.author.toString() === req.user._id.toString();
 
     if (!canDelete) {

@@ -383,16 +383,16 @@ npx cypress run --config retries=2
 
 Nếu gặp vấn đề với testing:
 
-1. Kiểm tra [Testing Guide](./docs/TESTING_GUIDE.md) chi tiết
+1. Kiểm tra [TESTING_GUIDE.md](TESTING_GUIDE.md) chi tiết
 2. Xem logs trong CI/CD pipeline
 3. Chạy tests locally để debug
 4. Liên hệ team qua Slack #testing
 
 ## 📄 Documentation
 
-- [Chi tiết Testing Guide](./docs/TESTING_GUIDE.md)
-- [Development Guide](./docs/DEVELOPMENT_GUIDE.md)
-- [API Documentation](./docs/API.md)
+- [Chi tiết Testing Guide](TESTING_GUIDE.md)
+- [Development Guide](../development/DEVELOPMENT_GUIDE.md)
+- [API Documentation](../api/README.md)
 
 ---
 

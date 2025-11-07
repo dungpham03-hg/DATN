@@ -35,10 +35,19 @@ import dayjs from 'dayjs';
 import { useAuth } from '../../contexts/AuthContext';
 import { MinutesViewDialog } from './MeetingDetail';
 import { ProtocolCard } from '../../components/Protocols';
+import { useSearchParams, useLocation } from 'react-router-dom';
 
 const MinutesApprovals = () => {
   const theme = useTheme();
   const { token, user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  
+  // Lấy meetingId từ query params hoặc từ localStorage (nếu đang ở MeetingDetail)
+  const meetingIdFromQuery = searchParams.get('meetingId');
+  const meetingIdFromStorage = localStorage.getItem('currentMeetingId');
+  const meetingId = meetingIdFromQuery || meetingIdFromStorage || null;
+  
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
 
   // Helper function to download file with token
@@ -91,6 +100,78 @@ const MinutesApprovals = () => {
     setLoading(true);
     setError('');
     try {
+      // Nếu có meetingId trong query params, chỉ lấy biên bản của cuộc họp đó
+      if (meetingId) {
+        // Lấy biên bản từ collection Minutes cho cuộc họp cụ thể
+        const res = await axios.get(`${API_BASE_URL}/minutes`, {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { meeting: meetingId, status: 'pending_approval' },
+        });
+        const minutesFromMain = res.data.minutes || [];
+
+        // Lấy biên bản từ minutesHistory của cuộc họp đó
+        try {
+          const res2 = await axios.get(`${API_BASE_URL}/meetings/${meetingId}/minutes`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const list = (res2?.data?.minutesHistory || []).filter(x => x.status === 'pending');
+          
+          // Lấy thông tin cuộc họp để có title
+          const meetingRes = await axios.get(`${API_BASE_URL}/meetings/${meetingId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const meeting = meetingRes?.data?.meeting;
+
+          const minutesFromHistory = list.map(x => {
+            let attachmentArray = [];
+            if (x.attachments && Array.isArray(x.attachments) && x.attachments.length > 0) {
+              attachmentArray = x.attachments.map(a => ({
+                name: a.name || 'Đính kèm',
+                path: a.path,
+                size: a.size
+              }));
+            } else if (x.attachment) {
+              attachmentArray = [{
+                name: x.attachment.name || 'Đính kèm',
+                path: x.attachment.path,
+                size: x.attachment.size
+              }];
+            }
+
+            return {
+              _id: x._id,
+              title: meeting?.title || 'Biên bản cuộc họp',
+              content: x.content,
+              meeting: { _id: meetingId, title: meeting?.title, location: meeting?.location },
+              status: 'pending_approval',
+              createdAt: x.createdAt,
+              submittedAt: x.submittedAt,
+              reviewedAt: x.reviewedAt,
+              reviewer: x.reviewer,
+              createdBy: x.createdBy,
+              attachment: x.attachment,
+              attachments: attachmentArray,
+              metadata: { requiredVoteCount: (meeting?.attendees?.length || 0), receivedVoteCount: 0 },
+              __source: 'minutesHistory',
+            };
+          });
+
+          // Hợp nhất danh sách
+          const byId = new Map();
+          minutesFromMain.forEach(x => byId.set(String(x._id), x));
+          minutesFromHistory.forEach(x => {
+            const key = String(x._id);
+            if (!byId.has(key)) byId.set(key, x);
+          });
+
+          const combined = Array.from(byId.values());
+          setMinutes(combined);
+          return;
+        } catch (err) {
+          console.error('Error fetching meeting minutes:', err);
+        }
+      }
+
       // Lấy danh sách biên bản ở trạng thái chờ phê duyệt từ collection Minutes
       const res = await axios.get(`${API_BASE_URL}/minutes`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -173,7 +254,7 @@ const MinutesApprovals = () => {
   useEffect(() => {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [meetingId]); // Re-fetch khi meetingId thay đổi
 
   const handleApprove = async () => {
     if (!confirm.minutes) return;
@@ -255,7 +336,11 @@ const MinutesApprovals = () => {
             </Box>
             <Box>
               <Typography variant="h6" fontWeight={800} sx={{ letterSpacing: 0.2 }}>Phê duyệt biên bản</Typography>
-              <Typography variant="body2" color="text.secondary">Không bỏ lỡ biên bản nào cần phê duyệt của doanh nghiệp bạn</Typography>
+              <Typography variant="body2" color="text.secondary">
+                {meetingId 
+                  ? 'Biên bản của cuộc họp hiện tại' 
+                  : 'Không bỏ lỡ biên bản nào cần phê duyệt của doanh nghiệp bạn'}
+              </Typography>
             </Box>
           </Stack>
           <Stack direction="row" spacing={1.5} alignItems="center" width={{ xs: '100%', sm: 'auto' }}>

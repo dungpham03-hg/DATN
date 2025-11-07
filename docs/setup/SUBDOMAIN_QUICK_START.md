@@ -51,7 +51,7 @@ https://meeting.yourdomain.com
 
 Nếu bạn muốn cài đặt thủ công chi tiết hơn, xem:
 
-📖 **[Hướng dẫn chi tiết](docs/deployment/SUBDOMAIN_SETUP.md)**
+📖 **[Hướng dẫn chi tiết](../deployment/SUBDOMAIN_SETUP.md)**
 
 ---
 
@@ -217,8 +217,8 @@ docker system prune -f
 
 ### Liên hệ
 
-- 📖 [Hướng dẫn đầy đủ](docs/deployment/SUBDOMAIN_SETUP.md)
-- 📖 [VPS Deployment Guide](docs/deployment/VPS_DEPLOYMENT_GUIDE.md)
+- 📖 [Hướng dẫn đầy đủ](../deployment/SUBDOMAIN_SETUP.md)
+- 📖 [VPS Deployment Guide](../deployment/VPS_DEPLOYMENT_GUIDE.md)
 - 🐛 [Report Issues](https://github.com/your-repo/issues)
 
 ---

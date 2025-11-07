@@ -516,7 +516,7 @@ const Meetings = () => {
 
 
   const canEditMeeting = (meeting) => {
-    return ['admin', 'manager', 'secretary', 'assistant'].includes(user?.role) || 
+    return ['admin', 'manager', 'secretary'].includes(user?.role) || 
            meeting?.createdBy === user?._id ||
            meeting?.organizer?._id === user?._id;
   };
@@ -633,7 +633,7 @@ const Meetings = () => {
                 Tổ chức và theo dõi tất cả cuộc họp của bạn
               </Typography>
             </Box>
-            {['admin', 'manager', 'secretary', 'assistant'].includes(user?.role) && (
+            {['admin', 'manager', 'secretary'].includes(user?.role) && (
               <Fab
                 color="primary"
                 variant="extended"
@@ -899,7 +899,7 @@ const Meetings = () => {
                     : `Không có cuộc họp nào trong mục "${tabFilters[selectedTab].label.toLowerCase()}"`
                   }
                 </Typography>
-                {['admin', 'manager', 'secretary', 'assistant'].includes(user?.role) && (
+                {['admin', 'manager', 'secretary'].includes(user?.role) && (
                   <Button
                     variant="contained"
                     startIcon={<AddIcon />}

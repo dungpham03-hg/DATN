@@ -119,27 +119,6 @@ const DOMAIN_VALIDATION = {
   autoVerifyDomainEmails: true
 };
 
-// Microsoft OAuth Configuration for Domains
-const MICROSOFT_OAUTH_CONFIG = {
-  // Tenant ID cho tổ chức (nếu có)
-  tenantId: process.env.MICROSOFT_TENANT_ID || 'common',
-  
-  // Scopes cần thiết
-  scopes: [
-    'openid',
-    'profile',
-    'email',
-    'User.Read'
-  ],
-  
-  // Redirect URI
-  redirectUri: process.env.MICROSOFT_REDIRECT_URI || 'http://localhost:5000/api/auth/microsoft/callback',
-  
-  // Client ID và Secret
-  clientId: process.env.MICROSOFT_CLIENT_ID,
-  clientSecret: process.env.MICROSOFT_CLIENT_SECRET
-};
-
 // Utility functions
 const DomainUtils = {
   /**
@@ -218,6 +197,5 @@ const DomainUtils = {
 module.exports = {
   DOMAIN_ROLE_MAPPING,
   DOMAIN_VALIDATION,
-  MICROSOFT_OAUTH_CONFIG,
   DomainUtils
 };

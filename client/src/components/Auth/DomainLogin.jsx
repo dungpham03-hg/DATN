@@ -9,20 +9,26 @@ import {
   Box,
   Chip,
   Divider,
-  CircularProgress
+  CircularProgress,
+  IconButton
 } from '@mui/material';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { School, Person, Security } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useNotification } from '../../contexts/NotificationContext';
+import ForgotPasswordDialog from './ForgotPasswordDialog';
 
 const DomainLogin = ({ onSuccess }) => {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [validating, setValidating] = useState(false);
   const [error, setError] = useState('');
   const [domainInfo, setDomainInfo] = useState(null);
   const navigate = useNavigate();
   const { success, error: showError } = useNotification();
+  const [openForgot, setOpenForgot] = useState(false);
 
   // Domain role mapping for display
   const getDomainRole = (email) => {
@@ -108,6 +114,12 @@ const DomainLogin = ({ onSuccess }) => {
       setError('Vui lòng nhập email hợp lệ và chờ domain được validate');
       return;
     }
+    
+    // ⚠️ Require password
+    if (!password || password.length < 6) {
+      setError('Mật khẩu là bắt buộc và phải có ít nhất 6 ký tự');
+      return;
+    }
 
     setLoading(true);
     setError('');
@@ -120,6 +132,7 @@ const DomainLogin = ({ onSuccess }) => {
       
       const requestData = { 
         email,
+        password,
         fullName: domainInfo.fullName || email.split('@')[0]
       };
       
@@ -195,6 +208,38 @@ const DomainLogin = ({ onSuccess }) => {
             helperText="Nhập email có đuôi @ep.techcorp.vn (nhân viên), @ma.techcorp.vn (manager), @ad.techcorp.vn (admin), v.v."
           />
 
+          <TextField
+            fullWidth
+            label="Mật khẩu"
+            type={showPassword ? 'text' : 'password'}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Nhập mật khẩu"
+            required
+            margin="normal"
+            disabled={loading || !domainInfo}
+            helperText="Mật khẩu cho tài khoản lần đầu đăng nhập (tối thiểu 6 ký tự)"
+            InputProps={{
+              endAdornment: password && (
+                <IconButton
+                  onClick={() => setShowPassword(!showPassword)}
+                  edge="end"
+                  aria-label="toggle password visibility"
+                  size="small"
+                >
+                  {showPassword ? <VisibilityOff /> : <Visibility />}
+                </IconButton>
+              )
+            }}
+          />
+
+          <Box display="flex" justifyContent="space-between" alignItems="center">
+            <Box />
+            <Button size="small" onClick={() => setOpenForgot(true)}>
+              Quên mật khẩu?
+            </Button>
+          </Box>
+
           {validating && (
             <Box display="flex" alignItems="center" gap={1} mt={1}>
               <CircularProgress size={16} />
@@ -256,6 +301,8 @@ const DomainLogin = ({ onSuccess }) => {
             {loading ? 'Đang đăng nhập...' : 'Đăng nhập với Email công ty'}
           </Button>
         </form>
+
+        <ForgotPasswordDialog open={openForgot} onClose={() => setOpenForgot(false)} defaultEmail={email} />
 
         <Divider sx={{ my: 2 }}>
           <Typography variant="caption" color="text.secondary">

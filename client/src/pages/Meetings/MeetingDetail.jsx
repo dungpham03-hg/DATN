@@ -246,6 +246,17 @@ const MeetingDetail = () => {
   const [meetingLinkValue, setMeetingLinkValue] = useState('');
   const [savingLink, setSavingLink] = useState(false);
 
+  // Lưu meetingId vào localStorage khi vào trang để phê duyệt biên bản có thể sử dụng
+  useEffect(() => {
+    if (id) {
+      localStorage.setItem('currentMeetingId', id);
+    }
+    return () => {
+      // Xóa khi rời khỏi trang
+      localStorage.removeItem('currentMeetingId');
+    };
+  }, [id]);
+
   const fetchMeeting = async () => {
     try {
       setLoading(true);
@@ -291,7 +302,7 @@ const MeetingDetail = () => {
     if (!user || !meeting) return false;
     const role = user.role;
     const isOwner = meeting.organizer?._id === user._id;
-    return ['admin', 'manager', 'secretary', 'assistant'].includes(role) || isOwner;
+    return ['admin', 'manager', 'secretary'].includes(role) || isOwner;
   };
 
   // Helper function to download file with token
@@ -1458,7 +1469,7 @@ const MeetingDetail = () => {
       if (!user || !meeting) return false;
       const isOrganizer = meeting.organizer?._id === user._id;
       const isSecretary = meeting.secretary?._id === user._id;
-      const privileged = ['admin','assistant'].includes(user.role);
+      const privileged = ['admin','secretary'].includes(user.role);
       return isOrganizer || isSecretary || privileged;
     };
 
@@ -1503,7 +1514,7 @@ const MeetingDetail = () => {
             const myVote = (d.votes || []).find(v => v.user?._id === user._id || v.user === user._id)?.choice;
             const isOrganizer = meeting.organizer?._id === user._id;
             const isSecretary = meeting.secretary?._id === user._id;
-            const canModerate = isOrganizer || isSecretary || ['admin','assistant'].includes(user.role);
+            const canModerate = isOrganizer || isSecretary || ['admin','secretary'].includes(user.role);
             return (
               <Box key={d._id || idx} sx={{ p: 1.25, borderRadius: 1, border: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
                 <Typography variant="body2" fontWeight={600}>{d.title || `Quyết định ${idx + 1}`}</Typography>

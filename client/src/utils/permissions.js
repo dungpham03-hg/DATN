@@ -85,22 +85,7 @@ export const ROLE_PERMISSIONS = {
     PERMISSIONS.STATS_VIEW
   ],
 
-  assistant: [
-    // Quyền xem cuộc họp
-    PERMISSIONS.MEETING_VIEW_ALL,
-    
-    // Quyền tạo cuộc họp (hạn chế hơn secretary)
-    PERMISSIONS.MEETING_CREATE,
-    PERMISSIONS.MEETING_INVITE,
-    
-    // Quyền phê duyệt biên bản
-    PERMISSIONS.MINUTES_APPROVE,
-    PERMISSIONS.MINUTES_VIEW_ALL,
-    
-    // Quyền xem báo cáo
-    PERMISSIONS.REPORTS_VIEW,
-    PERMISSIONS.STATS_VIEW
-  ],
+  // Assistant đã được gộp vào secretary
 
   technician: [
     // Quyền xem cuộc họp
@@ -205,18 +190,7 @@ export const getRoleDescription = (userRole) => {
       color: 'info',
       icon: '📝'
     },
-    assistant: {
-      title: 'Trợ lý',
-      description: 'Hỗ trợ quản lý cuộc họp',
-      permissions: [
-        'Tạo cuộc họp (hạn chế)',
-        'Mời người tham gia',
-        'Phê duyệt biên bản',
-        'Xem báo cáo'
-      ],
-      color: 'success',
-      icon: '🤝'
-    },
+    // Assistant đã được gộp vào secretary
     technician: {
       title: 'Kỹ thuật viên',
       description: 'Quản lý cuộc họp và tài liệu kỹ thuật',

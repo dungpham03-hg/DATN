@@ -65,7 +65,7 @@ meetingRoomSchema.methods.isAvailable = async function(startTime, endTime, exclu
   const Meeting = mongoose.model('Meeting');
   
   const query = {
-    'location': this.name,
+    room: this._id, // Tìm theo ObjectId của phòng thay vì location string
     status: { $in: ['scheduled', 'ongoing'] },
     $or: [
       { startTime: { $gte: startTime, $lt: endTime } },

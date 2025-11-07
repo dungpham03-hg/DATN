@@ -31,7 +31,10 @@ import {
   MeetingRoom as RoomIcon,
   LocationOn as LocationIcon,
   Groups as GroupsIcon,
-  Info as InfoIcon
+  Info as InfoIcon,
+  Event as EventIcon,
+  AccessTime as AccessTimeIcon,
+  Person as PersonIcon
 } from '@mui/icons-material';
 import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
@@ -49,6 +52,8 @@ const MeetingRooms = () => {
   const [openDetail, setOpenDetail] = useState(false);
   const [openForm, setOpenForm] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
+  const [usageHistory, setUsageHistory] = useState([]);
+  const [showUsageHistory, setShowUsageHistory] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     capacity: '',
@@ -68,12 +73,13 @@ const MeetingRooms = () => {
     { value: 'air_conditioning', label: 'Điều hòa' },
     { value: 'wifi', label: 'Wi‑Fi' }
   ];
-  const canCreateOrEdit = user && ['admin','manager'].includes(user.role);
-  const canDelete = user && user.role === 'admin';
+  const canCreateOrEdit = user && ['admin', 'manager', 'technician'].includes(user.role);
+  const canDelete = user && ['admin', 'technician'].includes(user.role);
 
   const fetchRooms = async () => {
     try {
       setLoading(true);
+      setShowUsageHistory(false);
       const params = {};
       if (filters.isActive !== '') params.isActive = filters.isActive;
       if (filters.floor) params.floor = filters.floor;
@@ -97,6 +103,44 @@ const MeetingRooms = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchUsageHistory = async () => {
+    if (!timeFilter.startTime || !timeFilter.endTime) {
+      alert('Vui lòng chọn thời gian bắt đầu và kết thúc');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await axios.get(`${API_BASE_URL}/meeting-rooms/usage-history`, {
+        params: {
+          startTime: new Date(timeFilter.startTime).toISOString(),
+          endTime: new Date(timeFilter.endTime).toISOString()
+        },
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setUsageHistory(response.data.usageHistory || []);
+      setShowUsageHistory(true);
+    } catch (error) {
+      console.error('Error fetching usage history:', error);
+      alert(error.response?.data?.message || 'Có lỗi xảy ra khi tra cứu lịch sử');
+      setUsageHistory([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDateTime = (dateTime) => {
+    if (!dateTime) return '—';
+    const date = new Date(dateTime);
+    return date.toLocaleString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   useEffect(() => {
@@ -207,14 +251,81 @@ const MeetingRooms = () => {
     }
   };
 
-  const softDelete = async (roomId) => {
+  const deactivateRoom = async (roomId) => {
+    if (!window.confirm('Bạn có chắc chắn muốn vô hiệu hóa phòng họp này? Phòng sẽ không khả dụng cho các yêu cầu đặt phòng mới.')) {
+      return;
+    }
+
     try {
-      await axios.delete(`${API_BASE_URL}/meeting-rooms/${roomId}`, {
+      const response = await axios.put(`${API_BASE_URL}/meeting-rooms/${roomId}/deactivate`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      
+      if (response.data.warning) {
+        alert(response.data.warning);
+      } else {
+        alert('Vô hiệu hóa phòng họp thành công');
+      }
+      
+      fetchRooms();
+    } catch (error) {
+      console.error('Error deactivating room:', error);
+      alert(error.response?.data?.message || 'Có lỗi xảy ra khi vô hiệu hóa phòng họp');
+    }
+  };
+
+  const activateRoom = async (roomId) => {
+    try {
+      await axios.put(`${API_BASE_URL}/meeting-rooms/${roomId}/activate`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert('Kích hoạt lại phòng họp thành công');
+      fetchRooms();
+    } catch (error) {
+      console.error('Error activating room:', error);
+      alert(error.response?.data?.message || 'Có lỗi xảy ra khi kích hoạt lại phòng họp');
+    }
+  };
+
+  const deleteRoom = async (roomId, force = false) => {
+    const confirmMessage = force 
+      ? '⚠️ CẢNH BÁO: Bạn có chắc chắn muốn XÓA VĨNH VIỄN phòng họp này? Hành động này không thể hoàn tác và sẽ mất tất cả dữ liệu lịch sử liên quan đến phòng này.'
+      : 'Bạn có chắc chắn muốn xóa phòng họp này? Phòng sẽ bị xóa vĩnh viễn khỏi hệ thống.';
+
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      const params = force ? { params: { force: 'true' } } : {};
+      const response = await axios.delete(`${API_BASE_URL}/meeting-rooms/${roomId}`, {
+        ...params,
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      alert(response.data.message || 'Xóa phòng họp thành công');
       fetchRooms();
     } catch (error) {
       console.error('Error deleting room:', error);
+      const errorData = error.response?.data;
+      
+      if (error.response?.status === 400 && errorData?.warning) {
+        // Nếu có cảnh báo về lịch sử, hỏi xem có muốn force delete không
+        if (errorData.completedMeetingsCount && !force) {
+          const forceDelete = window.confirm(
+            `${errorData.warning}\n\nBạn có muốn xóa phòng này bất chấp lịch sử? (Hành động này không thể hoàn tác)`
+          );
+          if (forceDelete) {
+            deleteRoom(roomId, true);
+            return;
+          }
+        } else {
+          // Có cuộc họp sắp tới, không thể xóa
+          alert(errorData.warning || errorData.message);
+        }
+      } else {
+        alert(errorData?.message || 'Có lỗi xảy ra khi xóa phòng họp');
+      }
     }
   };
 
@@ -358,8 +469,19 @@ const MeetingRooms = () => {
               </TextField>
             </Grid>
           </Grid>
-          <Box sx={{ mt: 2, textAlign: 'right' }}>
-            <Button variant="outlined" onClick={fetchRooms}>Tra cứu theo thời gian</Button>
+          <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1 }}>
+            {showUsageHistory && (
+              <Button 
+                variant="outlined" 
+                onClick={() => {
+                  setShowUsageHistory(false);
+                  fetchRooms();
+                }}
+              >
+                Quay lại danh sách phòng
+              </Button>
+            )}
+            <Button variant="outlined" onClick={fetchUsageHistory}>Tra cứu theo thời gian</Button>
           </Box>
         </Paper>
 
@@ -376,6 +498,101 @@ const MeetingRooms = () => {
               </Grid>
             ))}
           </Grid>
+        ) : showUsageHistory ? (
+          <>
+            <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 2, border: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
+              <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+                <EventIcon sx={{ color: theme.palette.primary.main }} />
+                <Typography variant="h6" fontWeight={700}>
+                  Lịch sử sử dụng phòng
+                </Typography>
+                <Chip label={`${usageHistory.length} cuộc họp`} size="small" color="primary" />
+              </Stack>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Khoảng thời gian: {formatDateTime(timeFilter.startTime)} - {formatDateTime(timeFilter.endTime)}
+              </Typography>
+            </Paper>
+            {usageHistory.length === 0 ? (
+              <Paper elevation={0} sx={{ p: 4, textAlign: 'center', borderRadius: 2, border: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
+                <Typography variant="body1">Không có cuộc họp nào sử dụng phòng trong khoảng thời gian này.</Typography>
+              </Paper>
+            ) : (
+              <Grid container spacing={3}>
+                {usageHistory.map((item) => (
+                  <Grid item xs={12} md={6} lg={4} key={item.meetingId}>
+                    <Card elevation={0} sx={{ borderRadius: 2, border: `1px solid ${alpha(theme.palette.divider, 0.1)}`, transition: 'all .2s ease', '&:hover': { boxShadow: theme.shadows[3], transform: 'translateY(-2px)' } }}>
+                      <CardContent>
+                        <Stack direction="row" spacing={2} alignItems="flex-start">
+                          <Box sx={{
+                            width: 44,
+                            height: 44,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderRadius: 1.5,
+                            bgcolor: alpha(theme.palette.info.main, 0.1),
+                            color: theme.palette.info.main
+                          }}>
+                            <EventIcon />
+                          </Box>
+                          <Box sx={{ flex: 1, minWidth: 0 }}>
+                            <Typography variant="subtitle1" fontWeight={700} noWrap>{item.meetingTitle}</Typography>
+                            <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.5 }}>
+                              <RoomIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                              <Typography variant="body2" color="text.secondary" noWrap>
+                                {item.roomName}
+                              </Typography>
+                            </Stack>
+                            {item.roomLocation && item.roomLocation !== '—' && (
+                              <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.5 }}>
+                                <LocationIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                                <Typography variant="body2" color="text.secondary" noWrap>
+                                  {item.roomLocation}
+                                </Typography>
+                              </Stack>
+                            )}
+                            <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
+                              <AccessTimeIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                              <Typography variant="body2" color="text.secondary">
+                                {formatDateTime(item.startTime)} - {formatDateTime(item.endTime)}
+                              </Typography>
+                            </Stack>
+                            {item.duration && (
+                              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, ml: 3 }}>
+                                Thời lượng: {item.duration} phút
+                              </Typography>
+                            )}
+                            {item.organizer && (
+                              <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
+                                <PersonIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                                <Typography variant="body2" color="text.secondary" noWrap>
+                                  {item.organizer.name}
+                                </Typography>
+                              </Stack>
+                            )}
+                          </Box>
+                        </Stack>
+                        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+                          <Chip 
+                            label={item.status === 'completed' ? 'Đã hoàn thành' : 
+                                   item.status === 'scheduled' ? 'Đã lên lịch' :
+                                   item.status === 'ongoing' ? 'Đang diễn ra' :
+                                   item.status === 'cancelled' ? 'Đã hủy' :
+                                   item.status === 'postponed' ? 'Đã hoãn' : item.status}
+                            size="small"
+                            color={item.status === 'completed' ? 'success' : 
+                                   item.status === 'scheduled' ? 'info' :
+                                   item.status === 'ongoing' ? 'warning' :
+                                   item.status === 'cancelled' ? 'error' : 'default'}
+                          />
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+          </>
         ) : (
           <>
             {filteredRooms.length === 0 ? (
@@ -458,8 +675,22 @@ const MeetingRooms = () => {
                           {canCreateOrEdit && (
                             <Button size="small" onClick={() => openEdit(room)}>Sửa</Button>
                           )}
-                          {canDelete && room.isActive !== false && (
-                            <Button size="small" color="error" onClick={() => softDelete(room._id)}>Vô hiệu</Button>
+                          {canDelete && (
+                            <>
+                              {room.isActive === false ? (
+                                <Button size="small" color="success" onClick={() => activateRoom(room._id)}>Kích hoạt</Button>
+                              ) : (
+                                <Button size="small" color="warning" onClick={() => deactivateRoom(room._id)}>Vô hiệu</Button>
+                              )}
+                              <Button 
+                                size="small" 
+                                color="error" 
+                                onClick={() => deleteRoom(room._id)}
+                                sx={{ ml: 0.5 }}
+                              >
+                                Xóa
+                              </Button>
+                            </>
                           )}
                         </Box>
                       </CardActions>

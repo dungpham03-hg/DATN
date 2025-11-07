@@ -6,6 +6,7 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 // Import CSS
 import 'react-datepicker/dist/react-datepicker.css';
 import './index.css';
+import './styles/modern-effects.css';
 
 // Font loading optimization
 if ('fonts' in document) {

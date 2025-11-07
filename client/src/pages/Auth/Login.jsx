@@ -31,6 +31,7 @@ import {
 
 import { useAuth } from '../../contexts/AuthContext';
 import DomainLogin from '../../components/Auth/DomainLogin';
+import ForgotPasswordDialog from '../../components/Auth/ForgotPasswordDialog';
 
 const Login = () => {
   const theme = useTheme();
@@ -46,6 +47,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [tabValue, setTabValue] = useState(0);
+  const [openForgot, setOpenForgot] = useState(false);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -176,7 +178,25 @@ const Login = () => {
           )}
 
           {tabValue === 0 && (
-            <DomainLogin onSuccess={handleDomainLoginSuccess} />
+            <>
+              <DomainLogin onSuccess={handleDomainLoginSuccess} />
+              <Divider sx={{ my: 2 }} />
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography variant="body2" color="text.secondary">
+                  Chưa có tài khoản?{' '}
+                  <Link 
+                    to="/register-domain"
+                    style={{ 
+                      color: theme.palette.primary.main,
+                      textDecoration: 'none',
+                      fontWeight: 500
+                    }}
+                  >
+                    Đăng ký Email công ty
+                  </Link>
+                </Typography>
+              </Box>
+            </>
           )}
 
           {tabValue === 1 && (
@@ -248,6 +268,12 @@ const Login = () => {
                 }}
               />
 
+              <Box sx={{ textAlign: 'right' }}>
+                <Button size="small" onClick={() => setOpenForgot(true)}>
+                  Quên mật khẩu?
+                </Button>
+              </Box>
+
               <Button
                 type="submit"
                 fullWidth
@@ -282,36 +308,6 @@ const Login = () => {
             </Divider>
             
             <Stack spacing={2}>
-              {/* Microsoft Login Button */}
-              <Button
-                fullWidth
-                variant="outlined"
-                size="large"
-                startIcon={
-                  <Box
-                    component="img"
-                    src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg"
-                    alt="Microsoft"
-                    sx={{ width: 20, height: 20 }}
-                  />
-                }
-                onClick={() => handleOAuthLogin('microsoft')}
-                sx={{
-                  borderRadius: 2,
-                  py: 1.5,
-                  textTransform: 'none',
-                  borderColor: theme.palette.grey[300],
-                  color: theme.palette.text.primary,
-                  '&:hover': {
-                    backgroundColor: '#0078d4',
-                    borderColor: '#0078d4',
-                    color: 'white'
-                  }
-                }}
-              >
-                Đăng nhập với Microsoft
-              </Button>
-
               {/* Google Login Button */}
               <Button
                 fullWidth
@@ -388,6 +384,7 @@ const Login = () => {
           )}
 
         </Paper>
+        <ForgotPasswordDialog open={openForgot} onClose={() => setOpenForgot(false)} defaultEmail={formData.email} />
       </Container>
     </Box>
   );

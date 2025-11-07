@@ -133,7 +133,6 @@ const MinutesDraftEditor = ({ meetingId, user, organizerId, secretaryId }) => {
     user?.role === 'admin' ||
     user?.role === 'manager' ||
     user?.role === 'secretary' ||
-    user?.role === 'assistant' ||
     (organizerId && user?._id === organizerId) ||
     (secretaryId && user?._id === secretaryId)
   ) && status === 'draft';

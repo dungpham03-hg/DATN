@@ -72,7 +72,7 @@ const MinutesContent = ({ meetingId, user }) => {
   }, [meetingId]);
 
   // Kiểm tra quyền
-  const canCreateMinutes = user && ['admin', 'manager', 'secretary', 'assistant'].includes(user.role);
+  const canCreateMinutes = user && ['admin', 'manager', 'secretary'].includes(user.role);
   
   // Có thể tạo biên bản mới nếu: có quyền và (chưa có biên bản nào hoặc biên bản hiện tại đã approved hoặc đã đóng phiếu)
   const canCreateNew = canCreateMinutes && (!activeMinutes || activeMinutes.status === 'approved' || activeMinutes.isVotingClosed);

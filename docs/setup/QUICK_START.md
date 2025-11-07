@@ -67,7 +67,7 @@ sudo ./deploy-vps.sh
 
 ### Cách 2: Manual deployment
 
-Xem chi tiết trong **DEPLOYMENT_GUIDE.md**
+Xem chi tiết trong **[DEPLOYMENT_GUIDE.md](../deployment/DEPLOYMENT_GUIDE.md)**
 
 ---
 
@@ -109,10 +109,10 @@ REACT_APP_SOCKET_URL=https://your-domain.com
 
 ## 📚 Tài liệu chi tiết
 
-- **ENV_SETUP_GUIDE.md** - Hướng dẫn cấu hình environment variables
-- **DEPLOYMENT_GUIDE.md** - Hướng dẫn deployment chi tiết
-- **LOCAL_SETUP.md** - Setup local development
-- **README.md** - Overview và features
+- **[ENV_SETUP_GUIDE.md](ENV_SETUP_GUIDE.md)** - Hướng dẫn cấu hình environment variables
+- **[DEPLOYMENT_GUIDE.md](../deployment/DEPLOYMENT_GUIDE.md)** - Hướng dẫn deployment chi tiết
+- **[LOCAL_SETUP.md](LOCAL_SETUP.md)** - Setup local development
+- **[README.md](../../README.md)** - Overview và features
 
 ---
 
@@ -154,5 +154,5 @@ REACT_APP_SOCKET_URL=https://your-domain.com
 
 ---
 
-**Hỗ trợ:** Xem DEPLOYMENT_GUIDE.md hoặc ENV_SETUP_GUIDE.md
+**Hỗ trợ:** Xem [DEPLOYMENT_GUIDE.md](../deployment/DEPLOYMENT_GUIDE.md) hoặc [ENV_SETUP_GUIDE.md](ENV_SETUP_GUIDE.md)
 

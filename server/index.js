@@ -149,7 +149,7 @@ mongoose.connect(process.env.MONGODB_URI, mongoOptions)
 
 // Routes
 // Lightweight health endpoint to avoid any router issues
-app.get('/api/auth/health', (req, res) => {
+app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
@@ -174,6 +174,8 @@ app.use('/api/users', require('./routes/users'));
 // Serve uploaded files
 const uploadPath = process.env.UPLOAD_PATH || 'uploads';
 app.use('/uploads', express.static(path.join(__dirname, uploadPath)));
+// Backward-compatible mount: some clients may request /api/app/uploads/... → serve same files
+app.use('/api/app/uploads', express.static(path.join(__dirname, uploadPath)));
 
 // Serve static files from the React app (only if build folder exists)
 const buildPath = path.join(__dirname, '../client/build');
@@ -503,9 +505,6 @@ server.listen(PORT, HOST, () => {
   console.log(`🔗 Frontend: ${envConfig.frontend.url}`);
   console.log(`📁 Upload Path: ${envConfig.upload.path}`);
   console.log(`🔐 CORS: ${envConfig.isDevelopment ? 'Development (All localhost)' : 'Production (Restricted)'}`);
-  if (envConfig.oauth.microsoft.enabled) {
-    console.log(`✅ Microsoft OAuth: Enabled`);
-  }
   if (envConfig.email.enabled) {
     console.log(`📧 Email: Enabled`);
   }

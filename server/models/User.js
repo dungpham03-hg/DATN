@@ -42,7 +42,7 @@ const userSchema = new mongoose.Schema({
   },
   autoAssignedRole: {
     type: String,
-    enum: ['admin', 'manager', 'secretary', 'assistant', 'technician', 'employee']
+    enum: ['admin', 'manager', 'secretary', 'technician', 'employee', 'guest']
   },
   isFromDomainAuth: {
     type: Boolean,
@@ -53,12 +53,12 @@ const userSchema = new mongoose.Schema({
   }],
   role: {
     type: String,
-    enum: ['admin', 'manager', 'secretary', 'assistant', 'technician', 'employee'],
-    default: 'employee'
+    enum: ['admin', 'manager', 'secretary', 'technician', 'employee', 'guest'],
+    default: 'guest'
   },
   originalRole: {
     type: String,
-    enum: ['admin', 'manager', 'secretary', 'assistant', 'technician', 'employee']
+    enum: ['admin', 'manager', 'secretary', 'technician', 'employee', 'guest']
   },
   temporaryRoleExpiresAt: {
     type: Date
@@ -85,6 +85,24 @@ const userSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  approvalStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'approved' // Guest users được approve tự động, domain users cần pending
+  },
+  approvedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  approvedAt: {
+    type: Date,
+    default: null
+  },
+  rejectionReason: {
+    type: String,
+    default: null
   },
   lastLogin: {
     type: Date
@@ -114,6 +132,15 @@ const userSchema = new mongoose.Schema({
       type: Boolean,
       default: true
     }
+  },
+  // Password reset fields
+  resetPasswordToken: {
+    type: String,
+    select: false
+  },
+  resetPasswordExpires: {
+    type: Date,
+    select: false
   }
 }, {
   timestamps: true,

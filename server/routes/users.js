@@ -11,7 +11,7 @@ const userValidation = [
   body('fullName').notEmpty().withMessage('Họ tên là bắt buộc').trim(),
   body('email').isEmail().withMessage('Email không hợp lệ').normalizeEmail(),
   body('password').optional().isLength({ min: 6 }).withMessage('Mật khẩu phải có ít nhất 6 ký tự'),
-  body('role').optional().isIn(['admin', 'manager', 'secretary', 'assistant', 'technician', 'employee']).withMessage('Vai trò không hợp lệ'),
+  body('role').optional().isIn(['admin', 'manager', 'secretary', 'technician', 'employee', 'guest']).withMessage('Vai trò không hợp lệ'),
   body('department').optional().trim(),
   body('position').optional().trim(),
   body('phone').optional().matches(/^[0-9+\-\s\(\)]+$/).withMessage('Số điện thoại không hợp lệ'),
@@ -73,6 +73,12 @@ router.get('/', authenticateToken, requireAdmin, async (req, res) => {
       query.isActive = isActive === 'true';
     }
 
+    // Filter by approvalStatus
+    const approvalStatus = req.query.approvalStatus;
+    if (approvalStatus && ['pending', 'approved', 'rejected'].includes(approvalStatus)) {
+      query.approvalStatus = approvalStatus;
+    }
+
     // Build sort
     const sort = {};
     sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
@@ -107,7 +113,7 @@ router.get('/', authenticateToken, requireAdmin, async (req, res) => {
         totalUsers: total
       },
       filters: {
-        roles: ['admin', 'manager', 'secretary', 'assistant', 'technician', 'employee'],
+        roles: ['admin', 'manager', 'secretary', 'technician', 'employee', 'guest'],
         departments: departments.sort(),
         statusOptions: [
           { value: 'true', label: 'Hoạt động' },
@@ -554,6 +560,133 @@ router.put('/:id/reset-password', authenticateToken, requireAdmin, async (req, r
     console.error('Reset password error:', error);
     res.status(500).json({
       message: 'Lỗi server khi reset mật khẩu',
+      error: process.env.NODE_ENV === 'development' ? error.message : {}
+    });
+  }
+});
+
+// @route   PUT /api/users/:id/approve
+// @desc    Phê duyệt tài khoản người dùng (pending -> approved)
+// @access  Private (Admin, Manager)
+router.put('/:id/approve', authenticateToken, async (req, res) => {
+  try {
+    // Check permissions (Admin or Manager)
+    if (!['admin', 'manager'].includes(req.user.role)) {
+      return res.status(403).json({
+        message: 'Bạn không có quyền phê duyệt tài khoản'
+      });
+    }
+
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        message: 'ID người dùng không hợp lệ'
+      });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({
+        message: 'Không tìm thấy người dùng'
+      });
+    }
+
+    if (user.approvalStatus === 'approved') {
+      return res.status(400).json({
+        message: 'Tài khoản đã được phê duyệt rồi'
+      });
+    }
+
+    if (user.approvalStatus === 'rejected') {
+      return res.status(400).json({
+        message: 'Không thể phê duyệt tài khoản đã bị từ chối'
+      });
+    }
+
+    // Approve user
+    user.approvalStatus = 'approved';
+    user.approvedBy = req.user._id;
+    user.approvedAt = new Date();
+    user.rejectionReason = null; // Clear rejection reason if any
+    
+    await user.save();
+
+    // Populate approvedBy
+    await user.populate('approvedBy', 'fullName email');
+
+    // TODO: Gửi thông báo/email cho user đã được approve
+
+    res.json({
+      message: 'Phê duyệt tài khoản thành công',
+      user: user.toPublicJSON()
+    });
+
+  } catch (error) {
+    console.error('Approve user error:', error);
+    res.status(500).json({
+      message: 'Lỗi server khi phê duyệt tài khoản',
+      error: process.env.NODE_ENV === 'development' ? error.message : {}
+    });
+  }
+});
+
+// @route   PUT /api/users/:id/reject
+// @desc    Từ chối tài khoản người dùng (pending -> rejected)
+// @access  Private (Admin, Manager)
+router.put('/:id/reject', authenticateToken, async (req, res) => {
+  try {
+    // Check permissions (Admin or Manager)
+    if (!['admin', 'manager'].includes(req.user.role)) {
+      return res.status(403).json({
+        message: 'Bạn không có quyền từ chối tài khoản'
+      });
+    }
+
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        message: 'ID người dùng không hợp lệ'
+      });
+    }
+
+    const { rejectionReason } = req.body;
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({
+        message: 'Không tìm thấy người dùng'
+      });
+    }
+
+    if (user.approvalStatus !== 'pending') {
+      return res.status(400).json({
+        message: 'Chỉ có thể từ chối tài khoản đang chờ phê duyệt'
+      });
+    }
+
+    // Reject user
+    user.approvalStatus = 'rejected';
+    user.approvedBy = req.user._id;
+    user.approvedAt = new Date();
+    user.rejectionReason = rejectionReason || 'Không có lý do';
+    user.isActive = false; // Vô hiệu hóa tài khoản bị từ chối
+    
+    await user.save();
+
+    // Populate approvedBy
+    await user.populate('approvedBy', 'fullName email');
+
+    // TODO: Gửi thông báo/email cho user đã bị từ chối
+
+    res.json({
+      message: 'Từ chối tài khoản thành công',
+      user: user.toPublicJSON()
+    });
+
+  } catch (error) {
+    console.error('Reject user error:', error);
+    res.status(500).json({
+      message: 'Lỗi server khi từ chối tài khoản',
       error: process.env.NODE_ENV === 'development' ? error.message : {}
     });
   }

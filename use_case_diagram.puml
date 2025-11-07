@@ -1,0 +1,72 @@
+@startuml
+title Hệ Thống Quản Lý Cuộc Họp
+
+left to right direction
+
+actor Admin
+actor Manager
+actor Secretary
+actor Technician
+actor Employee
+
+rectangle "Hệ Thống Quản Lý Cuộc Họp" {
+  usecase "Đăng nhập hệ thống" as UC1
+  usecase "Quản lý người dùng" as UC2
+  usecase "Quản lý cuộc họp" as UC3
+  usecase "Quản lý biên bản" as UC4
+  usecase "Quản lý phòng họp" as UC5
+  usecase "Quản lý lưu trữ" as UC6
+  usecase "Quản lý nghị quyết" as UC7
+  usecase "Quản lý thông báo" as UC8
+  usecase "Xem báo cáo và thống kê" as UC9
+  usecase "Xem Dashboard" as UC10
+}
+
+Admin --> UC1
+Admin --> UC2
+Admin --> UC3
+Admin --> UC4
+Admin --> UC5
+Admin --> UC6
+Admin --> UC7
+Admin --> UC8
+Admin --> UC9
+Admin --> UC10
+
+Manager --> UC1
+Manager --> UC2
+Manager --> UC3
+Manager --> UC4
+Manager --> UC5
+Manager --> UC6
+Manager --> UC7
+Manager --> UC8
+Manager --> UC9
+Manager --> UC10
+
+Secretary --> UC1
+Secretary --> UC3
+Secretary --> UC4
+Secretary --> UC6
+Secretary --> UC8
+Secretary --> UC9
+Secretary --> UC10
+
+Technician --> UC1
+Technician --> UC3
+Technician --> UC4
+Technician --> UC5
+Technician --> UC6
+Technician --> UC8
+Technician --> UC9
+Technician --> UC10
+
+Employee --> UC1
+Employee --> UC3
+Employee --> UC4
+Employee --> UC6
+Employee --> UC8
+Employee --> UC10
+
+@enduml
+

@@ -59,7 +59,10 @@ import {
   AssignmentInd as SecretaryIcon,
   SupportAgent as AssistantIcon,
   Badge as EmployeeIcon,
-  Clear as ClearIcon
+  Clear as ClearIcon,
+  CheckCircle as CheckCircleIcon,
+  Cancel as CancelIcon,
+  Close as CloseIcon
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 import axios from 'axios';
@@ -84,7 +87,8 @@ const UserManagement = () => {
     search: '',
     role: '',
     department: '',
-    isActive: ''
+    isActive: '',
+    approvalStatus: ''
   });
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState('desc');
@@ -142,14 +146,6 @@ const UserManagement = () => {
         textColor: theme.palette.info.main,
         borderColor: alpha(theme.palette.info.main, 0.3)
       },
-      assistant: { 
-        icon: <AssistantIcon />, 
-        color: 'success', 
-        label: 'Trợ lý',
-        bgColor: alpha(theme.palette.success.main, 0.15),
-        textColor: theme.palette.success.dark,
-        borderColor: alpha(theme.palette.success.main, 0.3)
-      },
       technician: {
         icon: <AssistantIcon />, // reuse icon
         color: 'secondary',
@@ -165,6 +161,14 @@ const UserManagement = () => {
         bgColor: alpha(theme.palette.grey[700], 0.12),
         textColor: theme.palette.grey[700],
         borderColor: alpha(theme.palette.grey[600], 0.3)
+      },
+      guest: { 
+        icon: <PersonIcon />, 
+        color: 'default', 
+        label: 'Khách',
+        bgColor: alpha(theme.palette.grey[400], 0.12),
+        textColor: theme.palette.grey[600],
+        borderColor: alpha(theme.palette.grey[500], 0.3)
       }
     };
     return configs[role] || configs.employee;
@@ -202,6 +206,7 @@ const UserManagement = () => {
         role: filters.role,
         department: filters.department,
         isActive: filters.isActive,
+        approvalStatus: filters.approvalStatus,
         sortBy,
         sortOrder
       });
@@ -302,7 +307,8 @@ const UserManagement = () => {
       search: '',
       role: '',
       department: '',
-      isActive: ''
+      isActive: '',
+      approvalStatus: ''
     });
     setPage(0);
   };
@@ -391,6 +397,57 @@ const UserManagement = () => {
 
     } catch (error) {
       console.error('Error deleting user:', error);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleApproveUser = async () => {
+    if (!selectedUser) return;
+
+    try {
+      setActionLoading(true);
+      
+      await axios.put(`${API_BASE_URL}/users/${selectedUser._id}/approve`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      alert('Phê duyệt tài khoản thành công!');
+      await fetchUsers();
+      await fetchStats();
+      handleMenuClose();
+
+    } catch (error) {
+      console.error('Error approving user:', error);
+      alert(error.response?.data?.message || 'Lỗi khi phê duyệt tài khoản');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRejectUser = async () => {
+    if (!selectedUser) return;
+
+    const reason = prompt('Nhập lý do từ chối (tùy chọn):');
+    if (reason === null) return; // User cancelled
+
+    try {
+      setActionLoading(true);
+      
+      await axios.put(`${API_BASE_URL}/users/${selectedUser._id}/reject`, {
+        rejectionReason: reason || 'Không có lý do'
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      alert('Từ chối tài khoản thành công!');
+      await fetchUsers();
+      await fetchStats();
+      handleMenuClose();
+
+    } catch (error) {
+      console.error('Error rejecting user:', error);
+      alert(error.response?.data?.message || 'Lỗi khi từ chối tài khoản');
     } finally {
       setActionLoading(false);
     }
@@ -538,7 +595,7 @@ const UserManagement = () => {
                   <Box>
                     <Typography variant="h6" fontWeight={600}>
                       {stats.byRole
-                        .filter(r => ['manager', 'secretary', 'assistant'].includes(r._id))
+                        .filter(r => ['manager', 'secretary'].includes(r._id))
                         .reduce((sum, r) => sum + r.count, 0)
                       }
                     </Typography>
@@ -627,6 +684,22 @@ const UserManagement = () => {
                     {option.label}
                   </MenuItem>
                 ))}
+              </Select>
+            </FormControl>
+          </Grid>
+
+          <Grid item xs={12} md={2}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Phê duyệt</InputLabel>
+              <Select
+                value={filters.approvalStatus}
+                onChange={(e) => handleFilterChange('approvalStatus', e.target.value)}
+                label="Phê duyệt"
+              >
+                <MenuItem value="">Tất cả</MenuItem>
+                <MenuItem value="pending">Chờ phê duyệt</MenuItem>
+                <MenuItem value="approved">Đã phê duyệt</MenuItem>
+                <MenuItem value="rejected">Đã từ chối</MenuItem>
               </Select>
             </FormControl>
           </Grid>
@@ -755,11 +828,29 @@ const UserManagement = () => {
                       </TableCell>
                       
                       <TableCell>
-                        <Chip
-                          label={user.isActive ? 'Hoạt động' : 'Vô hiệu hóa'}
-                          color={user.isActive ? 'success' : 'error'}
-                          size="small"
-                        />
+                        <Stack spacing={1}>
+                          <Chip
+                            label={user.isActive ? 'Hoạt động' : 'Vô hiệu hóa'}
+                            color={user.isActive ? 'success' : 'error'}
+                            size="small"
+                          />
+                          {user.isFromDomainAuth && user.approvalStatus && (
+                            <Chip
+                              label={
+                                user.approvalStatus === 'pending' ? 'Chờ phê duyệt' :
+                                user.approvalStatus === 'approved' ? 'Đã phê duyệt' :
+                                'Đã từ chối'
+                              }
+                              color={
+                                user.approvalStatus === 'pending' ? 'warning' :
+                                user.approvalStatus === 'approved' ? 'success' :
+                                'error'
+                              }
+                              size="small"
+                              variant="outlined"
+                            />
+                          )}
+                        </Stack>
                       </TableCell>
                       
                       <TableCell>
@@ -819,6 +910,26 @@ const UserManagement = () => {
         open={Boolean(anchorEl)}
         onClose={handleMenuClose}
       >
+        {/* Approve/Reject for pending domain users */}
+        {selectedUser?.isFromDomainAuth && selectedUser?.approvalStatus === 'pending' && 
+         ['admin', 'manager'].includes(currentUser?.role) && (
+          <>
+            <MenuItem onClick={handleApproveUser} disabled={actionLoading}>
+              <ListItemIcon>
+                <CheckCircleIcon color="success" />
+              </ListItemIcon>
+              <ListItemText>Phê duyệt tài khoản</ListItemText>
+            </MenuItem>
+            <MenuItem onClick={handleRejectUser} disabled={actionLoading}>
+              <ListItemIcon>
+                <CloseIcon color="error" />
+              </ListItemIcon>
+              <ListItemText>Từ chối tài khoản</ListItemText>
+            </MenuItem>
+            <Divider />
+          </>
+        )}
+
         {permissions.hasPermission(PERMISSIONS.USER_EDIT) && (
           <MenuItem onClick={handleEditUser}>
             <ListItemIcon>

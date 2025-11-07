@@ -141,7 +141,7 @@ router.post('/', authenticateToken, [
 ], handleValidationErrors, async (req, res) => {
   try {
     // Kiểm tra quyền tạo biên bản
-    if (!['admin', 'manager', 'secretary', 'assistant', 'technician'].includes(req.user.role)) {
+    if (!['admin', 'manager', 'secretary', 'technician'].includes(req.user.role)) {
       return res.status(403).json({
         message: 'Bạn không có quyền tạo biên bản'
       });

@@ -217,7 +217,6 @@ const MaterialLayout = () => {
       admin: { label: 'Quản trị viên', color: 'error' },
       manager: { label: 'Quản lý', color: 'warning' },
       secretary: { label: 'Thư ký', color: 'info' },
-      assistant: { label: 'Trợ lý', color: 'success' },
       technician: { label: 'Kỹ thuật viên', color: 'info' },
       employee: { label: 'Nhân viên', color: 'default' },
       user: { label: 'Người dùng', color: 'default' }

@@ -29,7 +29,7 @@ const getContentType = (filename) => {
   return contentTypes[ext] || 'application/octet-stream';
 };
 
-const allowedRoles = ['admin', 'manager', 'secretary', 'assistant', 'technician'];
+const allowedRoles = ['admin', 'manager', 'secretary', 'technician'];
 const allowedMimeTypes = [
   'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -77,7 +77,7 @@ const handleValidationErrors = (req, res, next) => {
 const hasProtocolPermission = (reqUser, protocol) => {
   if (!protocol) return false;
   return reqUser.role === 'admin' || 
-    (['manager', 'secretary', 'assistant'].includes(reqUser.role) && 
+    (['manager', 'secretary'].includes(reqUser.role) && 
      protocol.secretary?.toString() === reqUser._id.toString());
 };
 

@@ -59,7 +59,7 @@ const UserFormModal = ({
 
   // Lấy thông tin role từ permissions system
   const getRoleOptions = () => {
-    return ['admin', 'manager', 'secretary', 'assistant', 'technician', 'employee'].map(role => {
+    return ['admin', 'manager', 'secretary', 'technician', 'employee', 'guest'].map(role => {
       const roleInfo = getRoleDescription(role);
       return {
         value: role,

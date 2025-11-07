@@ -17,6 +17,8 @@ import RoleRoute from './components/Auth/RoleRoute';
 import Layout from './components/Layout';
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
+import ResetPassword from './pages/Auth/ResetPassword';
+import DomainRegister from './components/Auth/DomainRegister';
 import Dashboard from './pages/Dashboard/Dashboard';
 import Profile from './pages/Profile/Profile';
 import Settings from './pages/Settings/Settings';
@@ -61,6 +63,8 @@ function App() {
                     {/* Public routes */}
                     <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
                     <Route path="/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
+                    <Route path="/register-domain" element={<PublicOnlyRoute><DomainRegister /></PublicOnlyRoute>} />
+                    <Route path="/reset-password" element={<PublicOnlyRoute><ResetPassword /></PublicOnlyRoute>} />
                     <Route path="/oauth/callback" element={<OAuthCallback />} />
                     
                     {/* Protected routes */}
@@ -73,20 +77,20 @@ function App() {
                       <Route path="/meetings" element={<Meetings />} />
                       
                       <Route path="/meetings/create" element={
-                        <RoleRoute allowedRoles={['admin', 'manager', 'secretary', 'assistant']}>
+                        <RoleRoute allowedRoles={['admin', 'manager', 'secretary']}>
                           <CreateMeeting />
                         </RoleRoute>
                       } />
                       
                       <Route path="/meetings/:id" element={<MeetingDetail />} />
                       <Route path="/room-approvals" element={
-                        <RoleRoute allowedRoles={['technician','assistant','admin']}>
+                        <RoleRoute allowedRoles={['technician','secretary','admin']}>
                           <RoomApprovals />
                         </RoleRoute>
                       } />
                       
                       <Route path="/meetings/:id/edit" element={
-                        <RoleRoute allowedRoles={['admin', 'manager', 'secretary', 'assistant']}>
+                        <RoleRoute allowedRoles={['admin', 'manager', 'secretary']}>
                           <EditMeetingRedirect />
                         </RoleRoute>
                       } />
@@ -111,7 +115,7 @@ function App() {
                       } />
                       
                       <Route path="/protocol-approvals" element={
-                        <RoleRoute allowedRoles={['admin','manager','assistant']}>
+                        <RoleRoute allowedRoles={['admin','manager','secretary']}>
                           <MinutesApprovals />
                         </RoleRoute>
                       } />
