@@ -143,6 +143,12 @@ const MaterialLayout = () => {
       path: '/invitations',
       color: theme.palette.secondary.main
     },
+    { 
+      text: 'Công việc', 
+      icon: <AssignmentIcon />, 
+      path: '/tasks',
+      color: theme.palette.error.main
+    },
   ];
 
   // Menu items user

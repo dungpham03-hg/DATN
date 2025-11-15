@@ -37,6 +37,7 @@ import ArchiveDetail from './pages/Archives/ArchiveDetail';
 import Invitations from './pages/Invitations/Invitations';
 import UserManagement from './pages/Users/UserManagement';
 import Reports from './pages/Reports/Reports';
+import TaskManagement from './pages/Tasks/TaskManagement';
 
 function App() {
   return (
@@ -113,6 +114,8 @@ function App() {
                           <Reports />
                         </RoleRoute>
                       } />
+                      
+                      <Route path="/tasks" element={<TaskManagement />} />
                       
                       <Route path="/protocol-approvals" element={
                         <RoleRoute allowedRoles={['admin','manager','secretary']}>

@@ -314,6 +314,10 @@ const meetingSchema = new mongoose.Schema({
       type: String,
       enum: ['approved', 'rejected', 'tied', 'none'],
       default: 'none'
+    },
+    linkedTask: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'FollowUp'
     }
   }],
     default: []

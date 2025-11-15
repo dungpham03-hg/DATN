@@ -25,7 +25,11 @@ import {
   Tooltip,
   Stack,
   useTheme,
-  alpha
+  alpha,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from '@mui/material';
 import {
   Save as SaveIcon,
@@ -43,11 +47,13 @@ import {
   Visibility as VisibilityIcon,
   VisibilityOff as VisibilityOffIcon,
   Room as RoomIcon,
-  Assignment as AssignmentIcon
+  Assignment as AssignmentIcon,
+  AutoFixHigh as AutoFixHighIcon
 } from '@mui/icons-material';
 // Removed MUI X Date Pickers to avoid dependency issues
 import { useAuth } from '../../contexts/AuthContext';
 import { UserExplorerModal } from '../../components/UserExplorer';
+import SmartScheduler from '../../components/Meetings/SmartScheduler';
 import axios from 'axios';
 
 const CreateMeeting = () => {
@@ -115,6 +121,7 @@ const CreateMeeting = () => {
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [loadingRooms, setLoadingRooms] = useState(false);
   const [tagInput, setTagInput] = useState('');
+  const [smartSchedulerOpen, setSmartSchedulerOpen] = useState(false);
   
   // Modal states
   const [showAttendeesModal, setShowAttendeesModal] = useState(false);
@@ -247,6 +254,47 @@ const CreateMeeting = () => {
       ...prev,
       tags: prev.tags.filter(tag => tag !== tagToRemove)
     }));
+  };
+
+  // Smart Scheduler handlers
+  const handleOpenSmartScheduler = () => {
+    if (formData.attendees.length === 0) {
+      setError('Vui lòng chọn người tham dự trước khi sử dụng Smart Scheduler');
+      return;
+    }
+    setSmartSchedulerOpen(true);
+  };
+
+  const handleCloseSmartScheduler = () => {
+    setSmartSchedulerOpen(false);
+  };
+
+  const handleSelectSmartTime = (timeData) => {
+    const { startTime, endTime, room } = timeData;
+    
+    // Update form with selected time
+    setFormData(prev => ({
+      ...prev,
+      startTime: formatDateTimeLocal(new Date(startTime)),
+      endTime: formatDateTimeLocal(new Date(endTime)),
+      ...(room && { location: room._id })
+    }));
+
+    setSmartSchedulerOpen(false);
+    setError(''); // Clear any errors
+    
+    // Show success message
+    console.log('✅ Đã chọn khung giờ tối ưu:', { startTime, endTime, room });
+  };
+
+  const calculateDuration = () => {
+    if (formData.startTime && formData.endTime) {
+      const start = new Date(formData.startTime);
+      const end = new Date(formData.endTime);
+      const durationMinutes = Math.round((end - start) / 60000);
+      return durationMinutes > 0 ? durationMinutes : 60;
+    }
+    return 60;
   };
 
   const validateForm = () => {
@@ -488,6 +536,32 @@ const CreateMeeting = () => {
                             min: formData.startTime
                           }}
                         />
+                      </Grid>
+
+                      {/* Smart Scheduler Button */}
+                      <Grid item xs={12}>
+                        <Alert 
+                          severity="info" 
+                          action={
+                            <Button
+                              variant="contained"
+                              size="small"
+                              startIcon={<AutoFixHighIcon />}
+                              onClick={handleOpenSmartScheduler}
+                              disabled={formData.attendees.length === 0}
+                              sx={{ 
+                                background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+                                boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
+                              }}
+                            >
+                              Smart Scheduler
+                            </Button>
+                          }
+                        >
+                          <Typography variant="body2">
+                            <strong>Mẹo:</strong> Sử dụng Smart Scheduler để tự động tìm khung giờ tối ưu dựa trên lịch của người tham dự!
+                          </Typography>
+                        </Alert>
                       </Grid>
 
                       <Grid item xs={12} md={6}>
@@ -960,6 +1034,38 @@ const CreateMeeting = () => {
         multiSelect={false}
         filterRoles={['secretary']}
       />
+
+      {/* Smart Scheduler Dialog */}
+      <Dialog
+        open={smartSchedulerOpen}
+        onClose={handleCloseSmartScheduler}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            maxHeight: '90vh'
+          }
+        }}
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <AutoFixHighIcon color="primary" />
+            <Typography variant="h6" component="span">
+              Smart Scheduler - Tìm Khung Giờ Tối Ưu
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent dividers>
+          <SmartScheduler
+            attendees={formData.attendees}
+            duration={calculateDuration()}
+            capacity={0}
+            onSelectTime={handleSelectSmartTime}
+            onCancel={handleCloseSmartScheduler}
+          />
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { QuillWrapper } from '../../components/QuillEditor';
 import {
   Container,
@@ -34,8 +34,9 @@ import {
   ButtonGroup,
   Tooltip,
   Badge,
-  InputAdornment,
-  Link
+  Link,
+  CircularProgress,
+  Slider
 } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
 import LaunchIcon from '@mui/icons-material/Launch';
@@ -58,7 +59,6 @@ import {
   ThumbUpAltOutlined as ThumbUpIcon,
   ThumbDownAltOutlined as ThumbDownIcon,
   RemoveCircleOutline as NeutralIcon,
-  TaskAltOutlined as TaskIcon,
   PersonAddAlt as PersonAddIcon,
   Attachment as AttachmentIcon
 } from '@mui/icons-material';
@@ -67,6 +67,8 @@ import axios from 'axios';
 import { useAuth } from '../../contexts/AuthContext';
 import { getMeetingStatus } from '../../utils/dateUtils';
 import dayjs from 'dayjs';
+import useFollowUps from '../../hooks/useFollowUps';
+import { Assignment as AssignmentIcon, ArrowForward as ArrowForwardIcon } from '@mui/icons-material';
 
 // Định nghĩa các hàm định dạng thời gian và ngày tháng sử dụng dayjs (chỉ một lần)
 const formatDateTime = (iso) => (iso ? dayjs(iso).format('DD/MM/YYYY HH:mm') : '—');
@@ -94,6 +96,31 @@ const formatFileSize = (bytes) => {
   }
   return `${size % 1 === 0 ? size : size.toFixed(1)} ${units[unitIndex]}`;
 };
+
+const initialTaskForm = {
+  title: '',
+  description: '',
+  assignee: '',
+  dueDate: '',
+  priority: 'medium',
+  status: 'not_started',
+  progress: 0
+};
+
+const TASK_PRIORITY_OPTIONS = [
+  { value: 'low', label: 'Thấp' },
+  { value: 'medium', label: 'Trung bình' },
+  { value: 'high', label: 'Cao' },
+  { value: 'urgent', label: 'Khẩn cấp' }
+];
+
+const TASK_STATUS_OPTIONS = [
+  { value: 'not_started', label: 'Chưa bắt đầu' },
+  { value: 'in_progress', label: 'Đang thực hiện' },
+  { value: 'blocked', label: 'Bị chặn' },
+  { value: 'completed', label: 'Hoàn thành' },
+  { value: 'cancelled', label: 'Hủy' }
+];
 
 // Component để hiển thị file text
 const TextFileViewer = ({ url, fileName }) => {
@@ -205,9 +232,80 @@ const MeetingDetail = () => {
   const [meeting, setMeeting] = useState(null);
   const [loading, setLoading] = useState(true);
   const [newDecision, setNewDecision] = useState('');
-  const [newTask, setNewTask] = useState('');
-  const [taskAssignee, setTaskAssignee] = useState('');
   const [uploading, setUploading] = useState(false);
+  
+  // Follow-up System hook
+  const {
+    tasks: followUpTasks,
+    loading: tasksLoading,
+    createTask: createFollowUpTask,
+    fetchTasks: fetchFollowUpTasks
+  } = useFollowUps();
+  const [convertDecision, setConvertDecision] = useState(null);
+  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+  const [taskSubmitting, setTaskSubmitting] = useState(false);
+  const [taskForm, setTaskForm] = useState(initialTaskForm);
+  const resetTaskForm = () => setTaskForm(initialTaskForm);
+  const handleTaskFormChange = (field, value) => {
+    setTaskForm((prev) => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+  const handleCloseTaskDialog = () => {
+    if (taskSubmitting) return;
+    setTaskDialogOpen(false);
+    resetTaskForm();
+    setConvertDecision(null);
+  };
+  const openDecisionTaskDialog = (decision) => {
+    setTaskForm({
+      ...initialTaskForm,
+      title: decision?.title || '',
+      description: decision?.description || '',
+      priority: decision?.priority || 'medium',
+      status: 'not_started',
+      progress: 0,
+      assignee: '',
+      dueDate: ''
+    });
+    setConvertDecision(decision);
+    setTaskDialogOpen(true);
+  };
+  const handleTaskProgressChange = (_, value) => {
+    setTaskForm((prev) => ({
+      ...prev,
+      progress: Array.isArray(value) ? value[0] : value
+    }));
+  };
+  const [latestMinutesDoc, setLatestMinutesDoc] = useState(null);
+  const [convertingActionItems, setConvertingActionItems] = useState(false);
+
+  const handleConvertActionItems = async () => {
+    if (!latestMinutesDoc?._id) {
+      alert('Chưa có biên bản nào để chuyển');
+      return;
+    }
+    if (!window.confirm('Chuyển tất cả action item chưa liên kết thành công việc?')) {
+      return;
+    }
+    setConvertingActionItems(true);
+    try {
+      const res = await axios.post(
+        `${API_BASE_URL}/minutes/${latestMinutesDoc._id}/action-items/convert-to-tasks`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      alert(`Đã tạo ${res.data?.createdCount || 0} công việc${res.data?.skipped?.length ? `, bỏ qua ${res.data.skipped.length}` : ''}`);
+      await fetchMeeting();
+      await fetchLatestMinutesDoc();
+    } catch (error) {
+      console.error('Convert action items error:', error);
+      alert(error.response?.data?.message || 'Không thể chuyển action items');
+    } finally {
+      setConvertingActionItems(false);
+    }
+  };
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [filesState, setFilesState] = useState([]);
   const [dragActive, setDragActive] = useState(false);
@@ -257,6 +355,19 @@ const MeetingDetail = () => {
     };
   }, [id]);
 
+  const fetchLatestMinutesDoc = useCallback(async () => {
+    if (!id) return;
+    try {
+      const res = await axios.get(`${API_BASE_URL}/minutes`, {
+        params: { meeting: id, latest: true },
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setLatestMinutesDoc(res.data?.minutes?.[0] || null);
+    } catch (error) {
+      console.error('Fetch latest minutes doc error:', error);
+    }
+  }, [API_BASE_URL, id, token]);
+
   const fetchMeeting = async () => {
     try {
       setLoading(true);
@@ -292,6 +403,12 @@ const MeetingDetail = () => {
         ? newHistory.find(m => String(m._id) === String(preservedId))
         : null;
       setCurrentMinutes(preserved || latestMinutes);
+      
+      // Load Follow-up tasks for this meeting
+      if (id) {
+        await fetchFollowUpTasks({ meeting: id });
+      }
+      await fetchLatestMinutesDoc();
     } catch (err) {
       console.error('Error fetching meeting detail:', err);
     } finally {
@@ -356,6 +473,10 @@ const MeetingDetail = () => {
     fetchMeeting();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  useEffect(() => {
+    fetchLatestMinutesDoc();
+  }, [fetchLatestMinutesDoc]);
 
   // Agenda functions
   const handleAddAgendaItem = () => {
@@ -1613,6 +1734,29 @@ const MeetingDetail = () => {
                     </Stack>
                   )}
                 </Stack>
+                <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: 'wrap' }}>
+                  {d.linkedTask ? (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<AssignmentIcon fontSize="small" />}
+                      onClick={() => navigate(`/tasks?meeting=${id}&task=${d.linkedTask}`)}
+                    >
+                      Xem công việc
+                    </Button>
+                  ) : (
+                    canModerate && (
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<AssignmentIcon fontSize="small" />}
+                        onClick={() => openDecisionTaskDialog(d)}
+                      >
+                        Chuyển thành công việc
+                      </Button>
+                    )
+                  )}
+                </Stack>
               </Box>
             );
           })}
@@ -1642,124 +1786,369 @@ const MeetingDetail = () => {
       );
     }
 
-    const tasks = Array.isArray(meeting.tasks) ? meeting.tasks : [];
-
+    const tasks = followUpTasks || [];
     const attendees = Array.isArray(meeting.attendees) ? meeting.attendees.map(a => a.user) : [];
 
     const createTask = async () => {
-      const title = (newTask || '').trim();
-      if (!title) return;
+      const title = (taskForm.title || '').trim();
+      if (!title) {
+        alert('Vui lòng nhập mô tả nhiệm vụ');
+        return;
+      }
+      
+      if (!taskForm.assignee) {
+        alert('Vui lòng chọn người được giao nhiệm vụ');
+        return;
+      }
+
+      const dueDateValue = taskForm.dueDate ? dayjs(taskForm.dueDate).toDate() : undefined;
+
       try {
-        await axios.post(`${API_BASE_URL}/meetings/${id}/tasks`, {
-          title,
-          assignee: taskAssignee || undefined
-        }, { headers: { Authorization: `Bearer ${token}` } });
-        setNewTask('');
-        setTaskAssignee('');
-        await fetchMeeting();
+        setTaskSubmitting(true);
+        if (convertDecision) {
+          await axios.post(
+            `${API_BASE_URL}/meetings/${id}/decisions/${convertDecision._id}/convert-to-task`,
+            {
+              title,
+              description: taskForm.description?.trim() || undefined,
+              assignee: taskForm.assignee,
+              dueDate: dueDateValue?.toISOString(),
+              priority: taskForm.priority || 'medium'
+            },
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          resetTaskForm();
+          setConvertDecision(null);
+          setTaskDialogOpen(false);
+          await fetchMeeting();
+        } else {
+          const result = await createFollowUpTask({
+            title,
+            description: taskForm.description?.trim() || undefined,
+            assignee: taskForm.assignee,
+            meeting: id,
+            priority: taskForm.priority || 'medium',
+            dueDate: dueDateValue,
+            status: taskForm.status || 'not_started',
+            progress: typeof taskForm.progress === 'number' ? taskForm.progress : 0
+          });
+
+          if (result.success) {
+            resetTaskForm();
+            setTaskDialogOpen(false);
+            await fetchFollowUpTasks({ meeting: id });
+          } else {
+            alert(result.error || 'Không thể tạo nhiệm vụ');
+          }
+        }
       } catch (error) {
         console.error('Create task error:', error);
         alert(error.response?.data?.message || 'Không thể tạo nhiệm vụ');
+      } finally {
+        setTaskSubmitting(false);
       }
     };
 
-    const toggleTask = async (taskId) => {
-      try {
-        await axios.put(`${API_BASE_URL}/meetings/${id}/tasks/${taskId}/toggle`, {}, { headers: { Authorization: `Bearer ${token}` } });
-        await fetchMeeting();
-      } catch (error) {
-        console.error('Toggle task error:', error);
-        alert(error.response?.data?.message || 'Không thể cập nhật nhiệm vụ');
+    const getStatusColor = (status) => {
+      switch (status) {
+        case 'completed': return 'success';
+        case 'in_progress': return 'primary';
+        case 'blocked': return 'error';
+        case 'not_started': return 'default';
+        default: return 'default';
       }
     };
+
+    const getStatusText = (status) => {
+      switch (status) {
+        case 'completed': return 'Hoàn thành';
+        case 'in_progress': return 'Đang làm';
+        case 'blocked': return 'Bị chặn';
+        case 'not_started': return 'Chưa bắt đầu';
+        default: return 'Chưa bắt đầu';
+      }
+    };
+
+    const handleTaskClick = (task) => {
+      // Navigate to tasks page with filter
+      navigate(`/tasks?meeting=${id}&task=${task._id}`);
+    };
+
+    const canSubmitTask = Boolean(taskForm.title.trim()) && Boolean(taskForm.assignee);
+
     return (
-      <Paper elevation={0} sx={{ p: 3, borderRadius: 2, border: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
-        <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>Nhiệm vụ cần làm</Typography>
-        <Stack spacing={1} sx={{ mb: 1.5 }}>
-          {tasks.length === 0 && (
-            <Typography variant="body2" color="text.secondary">Chưa có nhiệm vụ.</Typography>
-          )}
-          {tasks.map((t, idx) => (
+      <>
+        <Paper elevation={0} sx={{ p: 3, borderRadius: 2, border: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+            <Typography variant="subtitle1" fontWeight={700}>Nhiệm vụ cần làm ({tasks.length})</Typography>
+            <Button
+              size="small"
+              endIcon={<ArrowForwardIcon />}
+              onClick={() => navigate(`/tasks?meeting=${id}`)}
+              sx={{ textTransform: 'none' }}
+            >
+              Xem tất cả
+            </Button>
+          </Stack>
+
+        {tasksLoading ? (
+          <Box sx={{ py: 2 }}>
+            <Skeleton variant="rounded" height={60} sx={{ mb: 1 }} />
+            <Skeleton variant="rounded" height={60} />
+          </Box>
+        ) : (
+          <>
+            <Stack spacing={1} sx={{ mb: 1.5 }}>
+              {tasks.length === 0 && (
+                <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+                  Chưa có nhiệm vụ.
+                </Typography>
+              )}
+              {tasks.slice(0, 5).map((t) => {
+                const isOverdue = t.dueDate && new Date(t.dueDate) < new Date() && t.status !== 'completed';
+                return (
+                  <Box
+                    key={t._id}
+                    onClick={() => handleTaskClick(t)}
+                    sx={{
+                      p: 1.25,
+                      borderRadius: 2,
+                      border: `1px solid ${isOverdue ? alpha(theme.palette.error.main, 0.3) : alpha(theme.palette.divider, 0.12)}`,
+                      bgcolor: t.status === 'completed' 
+                        ? alpha(theme.palette.success.main, 0.06) 
+                        : isOverdue 
+                        ? alpha(theme.palette.error.main, 0.05)
+                        : 'background.paper',
+                      boxShadow: 0.5,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      transition: 'all .15s ease',
+                      '&:hover': { boxShadow: 1, borderColor: alpha(theme.palette.primary.main, 0.2) },
+                      position: 'relative'
+                    }}
+                  >
+                    <Box 
+                      sx={{ 
+                        width: 6, 
+                        height: '100%', 
+                        borderRadius: 2, 
+                        bgcolor: t.status === 'completed' 
+                          ? 'success.main' 
+                          : t.status === 'in_progress'
+                          ? 'primary.main'
+                          : t.status === 'blocked'
+                          ? 'error.main'
+                          : 'grey.400',
+                        mr: 1 
+                      }} 
+                    />
+                    <Box sx={{ flex: 1 }}>
+                      <Typography
+                        variant="body2"
+                        sx={{ 
+                          color: t.status === 'completed' ? 'text.secondary' : 'text.primary', 
+                          textDecoration: t.status === 'completed' ? 'line-through' : 'none',
+                          fontWeight: t.status === 'in_progress' ? 600 : 400
+                        }}
+                      >
+                        {t.title}
+                      </Typography>
+                      <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.5 }}>
+                        {t.assignee && (
+                          <>
+                            <Avatar 
+                              src={t.assignee?.avatar} 
+                              sx={{ width: 22, height: 22 }}
+                            >
+                              {(t.assignee?.fullName || t.assignee?.email || 'U')[0].toUpperCase()}
+                            </Avatar>
+                            <Typography variant="caption" color="text.secondary">
+                              {t.assignee?.fullName || t.assignee?.email}
+                            </Typography>
+                          </>
+                        )}
+                        {t.dueDate && (
+                          <>
+                            <Typography variant="caption" color="text.secondary">•</Typography>
+                            <Typography 
+                              variant="caption" 
+                              color={isOverdue ? 'error.main' : 'text.secondary'}
+                              fontWeight={isOverdue ? 600 : 400}
+                            >
+                              {dayjs(t.dueDate).format('DD/MM/YYYY')}
+                            </Typography>
+                          </>
+                        )}
+                      </Stack>
+                    </Box>
+                    <Chip 
+                      size="small" 
+                      color={getStatusColor(t.status)} 
+                      variant={t.status === 'completed' ? 'filled' : 'outlined'} 
+                      label={getStatusText(t.status)} 
+                      sx={{ borderRadius: 1.5 }} 
+                    />
+                  </Box>
+                );
+              })}
+              {tasks.length > 5 && (
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  size="small"
+                  onClick={() => navigate(`/tasks?meeting=${id}`)}
+                  endIcon={<ArrowForwardIcon />}
+                  sx={{ mt: 1 }}
+                >
+                  Xem thêm {tasks.length - 5} nhiệm vụ khác
+                </Button>
+              )}
+            </Stack>
             <Box
-              key={t._id || idx}
-              onClick={() => toggleTask(t._id)}
               sx={{
-                p: 1.25,
-                borderRadius: 2,
-                border: `1px solid ${alpha(theme.palette.divider, 0.12)}`,
-                bgcolor: t.completed ? alpha(theme.palette.success.main, 0.06) : 'background.paper',
-                boxShadow: 0.5,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1,
-                transition: 'all .15s ease',
-                '&:hover': { boxShadow: 1, borderColor: alpha(theme.palette.primary.main, 0.2) },
-                position: 'relative'
+                mt: 2,
+                pt: 2,
+                borderTop: `1px dashed ${alpha(theme.palette.divider, 0.4)}`,
+                textAlign: 'center'
               }}
             >
-              <Box sx={{ width: 6, height: '100%', borderRadius: 2, bgcolor: t.completed ? 'success.main' : 'primary.main', mr: 1 }} />
-              <Box sx={{ flex: 1 }}>
-                <Typography
-                  variant="body2"
-                  sx={{ color: t.completed ? 'text.secondary' : 'text.primary', textDecoration: t.completed ? 'line-through' : 'none' }}
-                >
-                  {t.title || `Nhiệm vụ ${idx + 1}`}
-                </Typography>
-                {t.assignee && (
-                  <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.5 }}>
-                    <Avatar src={t.assignee?.avatar} sx={{ width: 22, height: 22 }} />
-                    <Typography variant="caption" color="text.secondary">{t.assignee?.fullName || t.assignee?.email}</Typography>
-                  </Stack>
-                )}
-              </Box>
-              <Chip size="small" color={t.completed ? 'success' : 'primary'} variant={t.completed ? 'filled' : 'outlined'} label={t.completed ? 'Đã xong' : 'Đang làm'} sx={{ borderRadius: 1.5 }} />
-            </Box>
-          ))}
-        </Stack>
-        <Stack spacing={1}>
-          <TextField
-            size="medium"
-            multiline
-            minRows={2}
-            maxRows={5}
-            placeholder="Mô tả nhiệm vụ chi tiết..."
-            value={newTask}
-            onChange={(e) => setNewTask(e.target.value)}
-            fullWidth
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <TaskIcon sx={{ color: 'text.secondary' }} />
-                </InputAdornment>
-              )
-            }}
-            sx={{ '& .MuiInputBase-root': { p: 1.25, borderRadius: 2, bgcolor: alpha(theme.palette.primary.main, 0.03) } }}
-          />
-          <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
-            <FormControl size="small" sx={{ minWidth: 240 }}>
-              <InputLabel><PersonAddIcon sx={{ mr: 1, verticalAlign: 'middle' }} />Giao cho</InputLabel>
-              <Select
-                label="Giao cho"
-                value={taskAssignee}
-                onChange={(e) => setTaskAssignee(e.target.value)}
-                renderValue={(value) => {
-                  if (!value) return 'Giao cho';
-                  const u = attendees.find(x => x._id === value);
-                  return u?.fullName || u?.email || 'Giao cho';
-                }}
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Giao nhiệm vụ mới cho cuộc họp này
+              </Typography>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => setTaskDialogOpen(true)}
               >
-                <MenuItem value=""><em>Không chọn</em></MenuItem>
-                {attendees.map(u => (
-                  <MenuItem key={u._id} value={u._id}>{u.fullName || u.email}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <Box sx={{ flex: 1 }} />
-            <Button variant="contained" size="medium" disabled={!newTask.trim()} onClick={createTask} sx={{ px: 3, borderRadius: 2 }}>Thêm</Button>
-          </Stack>
-        </Stack>
-      </Paper>
+                Tạo nhiệm vụ
+              </Button>
+            </Box>
+          </>
+        )}
+        </Paper>
+
+        <Dialog open={taskDialogOpen} onClose={handleCloseTaskDialog} maxWidth="md" fullWidth>
+          <DialogTitle>Giao nhiệm vụ mới</DialogTitle>
+          <DialogContent dividers>
+            <Stack spacing={3} sx={{ mt: 1 }}>
+              <TextField
+                label="Tiêu đề công việc *"
+                value={taskForm.title}
+                onChange={(e) => handleTaskFormChange('title', e.target.value)}
+                required
+                autoFocus
+              />
+              <TextField
+                label="Mô tả chi tiết"
+                value={taskForm.description}
+                onChange={(e) => handleTaskFormChange('description', e.target.value)}
+                multiline
+                minRows={4}
+              />
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6}>
+                  <FormControl fullWidth required>
+                    <InputLabel><PersonAddIcon sx={{ mr: 1, verticalAlign: 'middle' }} /> Người thực hiện</InputLabel>
+                    <Select
+                      label="Người thực hiện"
+                      value={taskForm.assignee}
+                      onChange={(e) => handleTaskFormChange('assignee', e.target.value)}
+                    >
+                      {attendees.length === 0 && (
+                        <MenuItem value="">
+                          <em>Chưa có người tham dự</em>
+                        </MenuItem>
+                      )}
+                      {attendees.map(u => (
+                        <MenuItem key={u._id} value={u._id}>
+                          {u.fullName || u.email}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    label="Hạn hoàn thành"
+                    type="date"
+                    InputLabelProps={{ shrink: true }}
+                    value={taskForm.dueDate}
+                    onChange={(e) => handleTaskFormChange('dueDate', e.target.value)}
+                    fullWidth
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>Mức độ ưu tiên</InputLabel>
+                    <Select
+                      label="Mức độ ưu tiên"
+                      value={taskForm.priority}
+                      onChange={(e) => handleTaskFormChange('priority', e.target.value)}
+                    >
+                      {TASK_PRIORITY_OPTIONS.map(option => (
+                        <MenuItem key={option.value} value={option.value}>
+                          {option.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>Trạng thái</InputLabel>
+                    <Select
+                      label="Trạng thái"
+                      value={taskForm.status}
+                      onChange={(e) => handleTaskFormChange('status', e.target.value)}
+                    >
+                      {TASK_STATUS_OPTIONS.map(option => (
+                        <MenuItem key={option.value} value={option.value}>
+                          {option.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+              </Grid>
+              <Box>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+                  <Typography variant="subtitle2" fontWeight={600}>
+                    Tiến độ: {taskForm.progress}%
+                  </Typography>
+                </Stack>
+                <Slider
+                  value={taskForm.progress}
+                  min={0}
+                  max={100}
+                  step={5}
+                  marks={[
+                    { value: 0, label: '0%' },
+                    { value: 50, label: '50%' },
+                    { value: 100, label: '100%' }
+                  ]}
+                  valueLabelDisplay="auto"
+                  onChange={handleTaskProgressChange}
+                />
+              </Box>
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseTaskDialog} disabled={taskSubmitting}>
+              Hủy
+            </Button>
+            <Button
+              variant="contained"
+              onClick={createTask}
+              disabled={taskSubmitting || !canSubmitTask}
+              startIcon={taskSubmitting ? <CircularProgress size={18} /> : <AssignmentIcon />}
+            >
+              {taskSubmitting ? 'Đang tạo...' : 'Tạo nhiệm vụ'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </>
     );
   };
 
@@ -1771,6 +2160,10 @@ const MeetingDetail = () => {
         </Paper>
       );
     }
+
+    const pendingActionItems = (latestMinutesDoc?.decisions || []).filter(
+      (d) => d.type === 'action_item' && !d.linkedTask
+    ).length;
 
     const getStatusColor = (status) => {
       switch (status) {
@@ -1798,22 +2191,35 @@ const MeetingDetail = () => {
       <Paper elevation={0} sx={{ p: 3, borderRadius: 2, border: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
           <Typography variant="subtitle1" fontWeight={700}>Lịch sử biên bản</Typography>
-          {canEdit && (
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => handleOpenMinutesDialog(null)}
-              sx={{
-                borderRadius: '8px',
-                textTransform: 'none',
-                fontWeight: 500,
-                fontSize: '0.875rem',
-                padding: '4px 12px',
-              }}
-            >
-              Tạo biên bản mới
-            </Button>
-          )}
+          <Stack direction="row" spacing={1} alignItems="center">
+            {pendingActionItems > 0 && (
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<AssignmentIcon fontSize="small" />}
+                onClick={handleConvertActionItems}
+                disabled={convertingActionItems}
+              >
+                {convertingActionItems ? 'Đang chuyển...' : `Chuyển ${pendingActionItems} action item`}
+              </Button>
+            )}
+            {canEdit && (
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => handleOpenMinutesDialog(null)}
+                sx={{
+                  borderRadius: '8px',
+                  textTransform: 'none',
+                  fontWeight: 500,
+                  fontSize: '0.875rem',
+                  padding: '4px 12px',
+                }}
+              >
+                Tạo biên bản mới
+              </Button>
+            )}
+          </Stack>
         </Stack>
 
         <Stack spacing={2}>
@@ -2144,8 +2550,6 @@ const MeetingDetail = () => {
             </Box>
             <Stack direction="row" spacing={1.5}>
               <Button variant="outlined" onClick={() => navigate(-1)}>Quay lại</Button>
-              <Button variant="outlined">Chỉnh sửa</Button>
-              <Button variant="outlined">In biên bản</Button>
             </Stack>
           </Stack>
         </Paper>

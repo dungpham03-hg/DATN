@@ -52,6 +52,10 @@ const minutesSchema = new mongoose.Schema({
       enum: ['low', 'medium', 'high', 'urgent'],
       default: 'medium'
     },
+    linkedTask: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'FollowUp'
+    },
     createdAt: {
       type: Date,
       default: Date.now

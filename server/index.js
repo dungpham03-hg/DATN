@@ -15,6 +15,7 @@ const Notification = require('./models/Notification');
 const cron = require('node-cron');
 const User = require('./models/User');
 const { cleanupOldNotifications } = require('./utils/notificationHelper');
+const { setupTaskReminderCronJobs } = require('./utils/taskReminderSystem');
 
 // Load environment variables
 dotenv.config();
@@ -170,6 +171,7 @@ app.use('/api/meeting-rooms', require('./routes/meetingRooms'));
 app.use('/api/archives', require('./routes/archives'));
 app.use('/api/protocols', require('./routes/protocols'));
 app.use('/api/users', require('./routes/users'));
+app.use('/api/followups', require('./routes/followups'));
 
 // Serve uploaded files
 const uploadPath = process.env.UPLOAD_PATH || 'uploads';
@@ -490,6 +492,9 @@ cron.schedule('0 2 * * *', async () => {
     // Silent error handling
   }
 });
+
+// Setup Task Reminder Cron Jobs (Follow-up System)
+setupTaskReminderCronJobs(io);
 
 // Start server
 const PORT = envConfig.port;

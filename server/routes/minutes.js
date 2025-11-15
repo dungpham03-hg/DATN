@@ -8,6 +8,7 @@ const Minutes = require('../models/Minutes');
 const Meeting = require('../models/Meeting');
 const User = require('../models/User');
 const Archive = require('../models/Archive');
+const FollowUp = require('../models/FollowUp');
 
 const router = express.Router();
 
@@ -118,6 +119,104 @@ router.get('/:id', authenticateToken, async (req, res) => {
       message: 'Lỗi server khi lấy biên bản',
       error: process.env.NODE_ENV === 'development' ? error.message : {}
     });
+  }
+});
+
+// Convert action items of a minutes document into follow-up tasks
+router.post('/:id/action-items/convert-to-tasks', authenticateToken, [
+  body('defaultAssignee').optional().isMongoId(),
+  body('defaultDueDate').optional().isISO8601(),
+  body('priority').optional().isIn(['low', 'medium', 'high', 'urgent'])
+], handleValidationErrors, async (req, res) => {
+  try {
+    const minutes = await Minutes.findById(req.params.id)
+      .populate({
+        path: 'meeting',
+        select: 'title organizer secretary attendees',
+        populate: { path: 'attendees.user', select: 'fullName email avatar' }
+      });
+
+    if (!minutes) {
+      return res.status(404).json({ message: 'Biên bản không tồn tại' });
+    }
+
+    const meeting = minutes.meeting;
+    if (!meeting) {
+      return res.status(400).json({ message: 'Biên bản chưa liên kết với cuộc họp' });
+    }
+
+    const isOrganizer = meeting.organizer && meeting.organizer.toString() === req.user._id.toString();
+    const isSecretary = meeting.secretary && meeting.secretary.toString() === req.user._id.toString();
+    const privileged = ['admin', 'manager', 'secretary'].includes(req.user.role);
+
+    if (!(isOrganizer || isSecretary || privileged)) {
+      return res.status(403).json({ message: 'Bạn không có quyền tạo công việc từ biên bản này' });
+    }
+
+    const decisions = Array.isArray(minutes.decisions) ? minutes.decisions : [];
+    const actionItems = decisions.filter(d => d.type === 'action_item' && !d.linkedTask);
+
+    if (actionItems.length === 0) {
+      return res.status(400).json({ message: 'Không còn action item nào để chuyển' });
+    }
+
+    const attendeeIds = meeting.attendees?.map(a => a.user?._id?.toString() || a.user?.toString()) || [];
+    const defaultAssignee = req.body.defaultAssignee;
+    const defaultDueDate = req.body.defaultDueDate ? new Date(req.body.defaultDueDate) : null;
+    const preferredPriority = req.body.priority || 'medium';
+
+    const createdTasks = [];
+    const skippedItems = [];
+
+    for (const item of actionItems) {
+      const assignee = (item.responsible && item.responsible.toString()) || defaultAssignee;
+      const dueDate = item.deadline ? new Date(item.deadline) : defaultDueDate;
+
+      if (!assignee || !dueDate) {
+        skippedItems.push({
+          id: item._id,
+          title: item.title,
+          reason: 'Thiếu người thực hiện hoặc hạn hoàn thành'
+        });
+        continue;
+      }
+
+      if (attendeeIds.length && !attendeeIds.includes(assignee.toString())) {
+        skippedItems.push({
+          id: item._id,
+          title: item.title,
+          reason: 'Người thực hiện không nằm trong danh sách tham dự'
+        });
+        continue;
+      }
+
+      const followUp = await FollowUp.create({
+        meeting: meeting._id,
+        title: item.title,
+        description: item.description,
+        assignee,
+        createdBy: req.user._id,
+        dueDate,
+        priority: item.priority || preferredPriority,
+        status: 'not_started',
+        progress: 0
+      });
+
+      item.linkedTask = followUp._id;
+      createdTasks.push(followUp);
+    }
+
+    await minutes.save();
+
+    res.json({
+      message: 'Đã chuyển action items thành công việc',
+      createdCount: createdTasks.length,
+      skipped: skippedItems,
+      tasks: createdTasks
+    });
+  } catch (error) {
+    console.error('Convert action items error:', error);
+    res.status(500).json({ message: 'Lỗi server khi chuyển action items', error: error.message });
   }
 });
 
@@ -563,6 +662,162 @@ router.get('/:id/export', authenticateToken, async (req, res) => {
       message: 'Lỗi server khi xuất biên bản',
       error: process.env.NODE_ENV === 'development' ? error.message : {}
     });
+  }
+});
+
+// ==================== STATISTICS & REPORTS ====================
+
+/**
+ * @route   GET /api/minutes/stats/overview
+ * @desc    Thống kê tổng quan về biên bản (lấy từ Minutes collection)
+ * @access  Private (Admin, Manager)
+ */
+router.get('/stats/overview', authenticateToken, async (req, res) => {
+  try {
+    // Permission check
+    if (!['admin', 'manager', 'secretary'].includes(req.user.role)) {
+      return res.status(403).json({ message: 'Không có quyền xem thống kê' });
+    }
+
+    const { from, to } = req.query;
+    const match = {};
+    
+    if (from || to) {
+      match.createdAt = {};
+      if (from) match.createdAt.$gte = new Date(from);
+      if (to) match.createdAt.$lte = new Date(to);
+    }
+
+    // Aggregate statistics from Minutes collection (real-time data)
+    const stats = await Minutes.aggregate([
+      { $match: match },
+      {
+        $facet: {
+          // Tổng quan
+          overview: [
+            {
+              $group: {
+                _id: null,
+                total: { $sum: 1 },
+                draft: { $sum: { $cond: [{ $eq: ['$status', 'draft'] }, 1, 0] } },
+                pending_review: { $sum: { $cond: [{ $eq: ['$status', 'pending_review'] }, 1, 0] } },
+                pending_approval: { $sum: { $cond: [{ $eq: ['$status', 'pending_approval'] }, 1, 0] } },
+                approved: { $sum: { $cond: [{ $eq: ['$status', 'approved'] }, 1, 0] } },
+                rejected: { $sum: { $cond: [{ $eq: ['$status', 'rejected'] }, 1, 0] } },
+                avgParticipationRate: { $avg: {
+                  $cond: [
+                    { $gt: ['$metadata.requiredVoteCount', 0] },
+                    { $multiply: [
+                      { $divide: ['$metadata.receivedVoteCount', '$metadata.requiredVoteCount'] },
+                      100
+                    ]},
+                    0
+                  ]
+                }}
+              }
+            }
+          ],
+          
+          // Theo trạng thái
+          byStatus: [
+            { $group: { _id: '$status', count: { $sum: 1 } } },
+            { $project: { _id: 0, status: '$_id', count: 1 } },
+            { $sort: { count: -1 } }
+          ],
+          
+          // Theo thư ký
+          bySecretary: [
+            { $group: { _id: '$secretary', count: { $sum: 1 } } },
+            { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'secretary' } },
+            { $unwind: { path: '$secretary', preserveNullAndEmptyArrays: true } },
+            { $project: { 
+              _id: 0, 
+              secretaryId: '$_id', 
+              secretaryName: '$secretary.fullName',
+              secretaryDepartment: '$secretary.department',
+              count: 1 
+            } },
+            { $sort: { count: -1 } },
+            { $limit: 10 }
+          ],
+          
+          // Timeline theo tháng
+          timelineMonthly: [
+            { $group: { 
+              _id: { 
+                year: { $year: '$createdAt' }, 
+                month: { $month: '$createdAt' } 
+              }, 
+              count: { $sum: 1 },
+              approved: { $sum: { $cond: [{ $eq: ['$status', 'approved'] }, 1, 0] } },
+              rejected: { $sum: { $cond: [{ $eq: ['$status', 'rejected'] }, 1, 0] } }
+            }},
+            { $project: { 
+              _id: 0, 
+              year: '$_id.year', 
+              month: '$_id.month', 
+              total: '$count',
+              approved: 1,
+              rejected: 1
+            } },
+            { $sort: { year: 1, month: 1 } }
+          ],
+          
+          // Thống kê votes
+          voteStats: [
+            {
+              $group: {
+                _id: null,
+                totalVotes: { $sum: '$metadata.receivedVoteCount' },
+                avgVotesPerMinutes: { $avg: '$metadata.receivedVoteCount' },
+                totalAgree: { $sum: '$metadata.agreeCount' },
+                totalAgreeWithComments: { $sum: '$metadata.agreeWithCommentsCount' },
+                totalDisagree: { $sum: '$metadata.disagreeCount' }
+              }
+            }
+          ]
+        }
+      }
+    ]);
+
+    const result = stats[0] || {};
+    const overview = result.overview[0] || {};
+    const voteStats = result.voteStats[0] || {};
+
+    res.json({
+      message: 'OK',
+      data: {
+        overview: {
+          total: overview.total || 0,
+          draft: overview.draft || 0,
+          pending_review: overview.pending_review || 0,
+          pending_approval: overview.pending_approval || 0,
+          approved: overview.approved || 0,
+          rejected: overview.rejected || 0,
+          avgParticipationRate: Math.round(overview.avgParticipationRate || 0),
+          approvalRate: overview.total > 0 
+            ? Math.round((overview.approved / overview.total) * 100) 
+            : 0
+        },
+        byStatus: result.byStatus || [],
+        bySecretary: result.bySecretary || [],
+        timelineMonthly: result.timelineMonthly || [],
+        voteStats: {
+          totalVotes: voteStats.totalVotes || 0,
+          avgVotesPerMinutes: Math.round(voteStats.avgVotesPerMinutes || 0),
+          totalAgree: voteStats.totalAgree || 0,
+          totalAgreeWithComments: voteStats.totalAgreeWithComments || 0,
+          totalDisagree: voteStats.totalDisagree || 0,
+          agreeRate: voteStats.totalVotes > 0
+            ? Math.round((voteStats.totalAgree / voteStats.totalVotes) * 100)
+            : 0
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching minutes stats:', error);
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
   }
 });
 

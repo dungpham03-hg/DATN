@@ -13,6 +13,7 @@
     "test:integration": "cross-env NODE_ENV=test jest --testPathPattern=integration",
     "test:unit": "cross-env NODE_ENV=test jest --testPathPattern=unit",
     "seed": "node scripts/seed.js",
+    "seed:complete": "node scripts/seed-complete-data.js",
     "test-jitsi": "node scripts/test-jitsi-recording.js",
     "fix-protocol-status": "node scripts/fix-protocol-status.js",
     "test-protocol-status": "node scripts/fix-protocol-status.js test"

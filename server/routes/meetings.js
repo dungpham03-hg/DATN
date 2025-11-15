@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const jwt = require('jsonwebtoken');
 const Meeting = require('../models/Meeting');
+const FollowUp = require('../models/FollowUp');
 const Notification = require('../models/Notification');
 const Archive = require('../models/Archive');
 const { 
@@ -36,6 +37,56 @@ router.get('/stats/summary', authenticateToken, async (req, res) => {
       { $match: match },
       {
         $facet: {
+          // Tổng quan
+          overview: [
+            {
+              $group: {
+                _id: null,
+                total: { $sum: 1 },
+                totalAttendees: { $sum: { $size: { $ifNull: ['$attendees', []] } } },
+                avgDuration: { 
+                  $avg: {
+                    $divide: [
+                      { $subtract: ['$endTime', '$startTime'] },
+                      1000 * 60 // Convert to minutes
+                    ]
+                  }
+                }
+              }
+            }
+          ],
+          
+          // Theo phòng ban (NEW!)
+          byDepartment: [
+            { $match: { department: { $ne: null, $ne: '' } } },
+            { $group: { 
+              _id: '$department', 
+              count: { $sum: 1 },
+              avgAttendees: { $avg: { $size: { $ifNull: ['$attendees', []] } } }
+            } },
+            { $project: { 
+              _id: 0, 
+              department: '$_id', 
+              count: 1,
+              avgAttendees: { $round: ['$avgAttendees', 1] }
+            } },
+            { $sort: { count: -1 } }
+          ],
+          
+          // Theo trạng thái (NEW!)
+          byStatus: [
+            { $group: { _id: '$status', count: { $sum: 1 } } },
+            { $project: { _id: 0, status: '$_id', count: 1 } },
+            { $sort: { count: -1 } }
+          ],
+          
+          // Theo loại cuộc họp (NEW!)
+          byMeetingType: [
+            { $group: { _id: '$meetingType', count: { $sum: 1 } } },
+            { $project: { _id: 0, meetingType: '$_id', count: 1 } },
+            { $sort: { count: -1 } }
+          ],
+          
           byRoom: [
             { $group: { _id: '$room', count: { $sum: 1 } } },
             { $lookup: { from: 'meetingrooms', localField: '_id', foreignField: '_id', as: 'room' } },
@@ -43,27 +94,101 @@ router.get('/stats/summary', authenticateToken, async (req, res) => {
             { $project: { _id: 0, roomId: '$_id', roomName: '$room.name', count: 1 } },
             { $sort: { count: -1 } }
           ],
+          
           byPriority: [
             { $group: { _id: '$priority', count: { $sum: 1 } } },
             { $project: { _id: 0, priority: '$_id', count: 1 } },
             { $sort: { count: -1 } }
           ],
+          
           byAttendees: [
             { $project: { attendeeCount: { $size: { $ifNull: ['$attendees', []] } } } },
             { $bucket: { groupBy: '$attendeeCount', boundaries: [0,1,3,6,11,21,51,101,10000], default: 'Khác', output: { count: { $sum: 1 } } } }
           ],
+          
           timelineMonthly: [
             { $group: { _id: { y: { $year: '$startTime' }, m: { $month: '$startTime' } }, count: { $sum: 1 } } },
             { $project: { _id: 0, year: '$_id.y', month: '$_id.m', count: 1 } },
             { $sort: { year: 1, month: 1 } }
+          ],
+          
+          // Phân tích attendance (NEW!)
+          attendanceAnalysis: [
+            { $unwind: { path: '$attendees', preserveNullAndEmptyArrays: false } },
+            {
+              $group: {
+                _id: null,
+                totalInvited: { $sum: 1 },
+                attended: { $sum: { $cond: [{ $eq: ['$attendees.status', 'attended'] }, 1, 0] } },
+                accepted: { $sum: { $cond: [{ $eq: ['$attendees.status', 'accepted'] }, 1, 0] } },
+                declined: { $sum: { $cond: [{ $eq: ['$attendees.status', 'declined'] }, 1, 0] } }
+              }
+            }
+          ],
+          
+          // Top organizers (NEW!)
+          topOrganizers: [
+            { $group: { _id: '$organizer', count: { $sum: 1 } } },
+            { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'user' } },
+            { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+            { $project: {
+              _id: 0,
+              organizerId: '$_id',
+              organizerName: '$user.fullName',
+              organizerDepartment: '$user.department',
+              count: 1
+            } },
+            { $sort: { count: -1 } },
+            { $limit: 10 }
           ]
         }
       }
     ];
 
     const result = await require('../models/Meeting').aggregate(pipeline);
-    const data = result[0] || { byRoom: [], byPriority: [], byAttendees: [], timelineMonthly: [] };
-    res.json({ message: 'OK', data });
+    const data = result[0] || {};
+    
+    // Calculate additional metrics
+    const overview = data.overview?.[0] || {};
+    const attendanceAnalysis = data.attendanceAnalysis?.[0] || {};
+    
+    const attendanceRate = attendanceAnalysis.totalInvited > 0
+      ? Math.round((attendanceAnalysis.attended / attendanceAnalysis.totalInvited) * 100)
+      : 0;
+    
+    const acceptanceRate = attendanceAnalysis.totalInvited > 0
+      ? Math.round(((attendanceAnalysis.attended + attendanceAnalysis.accepted) / attendanceAnalysis.totalInvited) * 100)
+      : 0;
+
+    res.json({ 
+      message: 'OK', 
+      data: {
+        overview: {
+          total: overview.total || 0,
+          totalAttendees: overview.totalAttendees || 0,
+          avgAttendeesPerMeeting: overview.total > 0 
+            ? Math.round((overview.totalAttendees / overview.total) * 10) / 10
+            : 0,
+          avgDuration: Math.round(overview.avgDuration || 0)
+        },
+        attendanceStats: {
+          totalInvited: attendanceAnalysis.totalInvited || 0,
+          attended: attendanceAnalysis.attended || 0,
+          accepted: attendanceAnalysis.accepted || 0,
+          declined: attendanceAnalysis.declined || 0,
+          attendanceRate: attendanceRate,
+          acceptanceRate: acceptanceRate
+        },
+        byDepartment: data.byDepartment || [],
+        byStatus: data.byStatus || [],
+        byMeetingType: data.byMeetingType || [],
+        byRoom: data.byRoom || [],
+        byPriority: data.byPriority || [],
+        byAttendees: data.byAttendees || [],
+        timelineMonthly: data.timelineMonthly || [],
+        topOrganizers: data.topOrganizers || []
+      }
+    });
   } catch (e) {
     console.error('Stats summary error:', e);
     res.status(500).json({ message: 'Lỗi server khi tổng hợp thống kê' });
@@ -840,6 +965,69 @@ router.post('/:id/decisions/:decisionId/finalize', authenticateToken, async (req
   } catch (error) {
     console.error('Finalize decision error:', error);
     return res.status(500).json({ message: 'Lỗi server khi chốt quyết định' });
+  }
+});
+
+// Convert decision to follow-up task
+router.post('/:id/decisions/:decisionId/convert-to-task', authenticateToken, [
+  body('title').optional().isString().trim().isLength({ min: 1, max: 500 }),
+  body('description').optional().isString().trim().isLength({ max: 2000 }),
+  body('assignee').isMongoId().withMessage('Người thực hiện không hợp lệ'),
+  body('dueDate').isISO8601().withMessage('Hạn hoàn thành không hợp lệ'),
+  body('priority').optional().isIn(['low', 'medium', 'high', 'urgent'])
+], handleValidationErrors, async (req, res) => {
+  try {
+    const meeting = await Meeting.findById(req.params.id);
+    if (!meeting) return res.status(404).json({ message: 'Cuộc họp không tồn tại' });
+
+    const isOrganizer = meeting.organizer && meeting.organizer.toString() === req.user._id.toString();
+    const isSecretary = meeting.secretary && meeting.secretary.toString() === req.user._id.toString();
+    const privileged = ['admin', 'manager', 'secretary'].includes(req.user.role);
+    if (!(isOrganizer || isSecretary || privileged)) {
+      return res.status(403).json({ message: 'Bạn không có quyền tạo công việc từ quyết định' });
+    }
+
+    const decision = meeting.decisions.id(req.params.decisionId);
+    if (!decision) {
+      return res.status(404).json({ message: 'Không tìm thấy quyết định' });
+    }
+
+    if (decision.linkedTask) {
+      return res.status(400).json({ message: 'Quyết định này đã được chuyển thành công việc' });
+    }
+
+    const attendees = meeting.attendees?.map(a => a.user?.toString() || a.user) || [];
+    if (attendees.length && !attendees.includes(req.body.assignee)) {
+      return res.status(400).json({ message: 'Người thực hiện phải nằm trong danh sách tham dự cuộc họp' });
+    }
+
+    const followUp = await FollowUp.create({
+      meeting: meeting._id,
+      title: req.body.title?.trim() || decision.title,
+      description: req.body.description !== undefined ? req.body.description : decision.description,
+      assignee: req.body.assignee,
+      createdBy: req.user._id,
+      dueDate: new Date(req.body.dueDate),
+      priority: req.body.priority || 'medium',
+      status: 'not_started',
+      progress: 0
+    });
+
+    decision.linkedTask = followUp._id;
+    await meeting.save();
+
+    await followUp.populate([
+      { path: 'assignee', select: 'fullName email avatar position department' },
+      { path: 'createdBy', select: 'fullName email avatar' }
+    ]);
+
+    res.json({
+      message: 'Đã tạo công việc từ quyết định',
+      followUp
+    });
+  } catch (error) {
+    console.error('Convert decision error:', error);
+    res.status(500).json({ message: 'Lỗi server khi chuyển quyết định thành công việc', error: error.message });
   }
 });
 
@@ -5419,6 +5607,223 @@ router.put('/:id/approval', authenticateToken, async (req, res) => {
     res.status(500).json({
       message: 'Lỗi server khi phê duyệt cuộc họp',
       error: process.env.NODE_ENV === 'development' ? error.message : {}
+    });
+  }
+});
+
+// ==================== SMART SCHEDULING FEATURES ====================
+
+/**
+ * @route   POST /api/meetings/suggest-times
+ * @desc    Tìm khung giờ tối ưu cho cuộc họp (Smart Time Slot Finder)
+ * @access  Private
+ */
+const { findOptimalTimeSlots, findAlternativeTimeSlots } = require('../utils/scheduleOptimizer');
+
+router.post('/suggest-times', authenticateToken, [
+  body('attendees').isArray({ min: 1 }).withMessage('Cần ít nhất 1 người tham dự'),
+  body('duration').isInt({ min: 15, max: 480 }).withMessage('Thời lượng phải từ 15-480 phút'),
+  body('startDate').optional().isISO8601().withMessage('Ngày bắt đầu không hợp lệ'),
+  body('endDate').optional().isISO8601().withMessage('Ngày kết thúc không hợp lệ'),
+  body('capacity').optional().isInt({ min: 0 }).withMessage('Sức chứa không hợp lệ'),
+  body('roomRequired').optional().isBoolean()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        message: 'Dữ liệu không hợp lệ', 
+        errors: errors.array() 
+      });
+    }
+
+    const {
+      attendees,
+      duration,
+      startDate,
+      endDate,
+      capacity = 0,
+      roomRequired = false,
+      topN = 5
+    } = req.body;
+
+    console.log('🎯 Smart Scheduler Request:', {
+      attendeeCount: attendees.length,
+      duration,
+      startDate,
+      endDate,
+      capacity,
+      roomRequired
+    });
+
+    // Thêm người tạo vào danh sách attendees nếu chưa có
+    const attendeeIds = [...new Set([...attendees, req.user._id.toString()])];
+
+    const options = {
+      startDate: startDate ? new Date(startDate) : new Date(),
+      endDate: endDate ? new Date(endDate) : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+      capacity,
+      roomRequired,
+      topN
+    };
+
+    const result = await findOptimalTimeSlots(attendeeIds, duration, options);
+
+    if (!result.success) {
+      return res.status(404).json({
+        message: result.message,
+        suggestions: []
+      });
+    }
+
+    console.log(`✅ Found ${result.suggestions.length} optimal time slots`);
+
+    res.json({
+      message: result.message,
+      suggestions: result.suggestions,
+      metadata: {
+        totalAnalyzed: result.totalAnalyzed,
+        totalFreeSlots: result.totalFreeSlots,
+        attendeeCount: attendeeIds.length,
+        duration
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in suggest-times:', error);
+    res.status(500).json({ 
+      message: 'Lỗi khi tìm khung giờ tối ưu',
+      error: error.message 
+    });
+  }
+});
+
+/**
+ * @route   POST /api/meetings/:id/suggest-alternatives
+ * @desc    Tìm thời gian thay thế khi có xung đột
+ * @access  Private
+ */
+router.post('/:id/suggest-alternatives', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { topN = 5, roomRequired = false } = req.body;
+
+    console.log(`🔄 Finding alternatives for meeting: ${id}`);
+
+    // Check meeting exists
+    const meeting = await Meeting.findById(id);
+    if (!meeting) {
+      return res.status(404).json({ message: 'Không tìm thấy cuộc họp' });
+    }
+
+    // Check permission
+    if (meeting.organizer.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Không có quyền thực hiện' });
+    }
+
+    const options = {
+      startDate: new Date(),
+      endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+      roomRequired,
+      topN
+    };
+
+    const result = await findAlternativeTimeSlots(id, options);
+
+    if (!result.success) {
+      return res.status(404).json({
+        message: result.message,
+        suggestions: []
+      });
+    }
+
+    console.log(`✅ Found ${result.suggestions.length} alternative time slots`);
+
+    res.json({
+      message: result.message,
+      suggestions: result.suggestions,
+      original: {
+        startTime: meeting.startTime,
+        endTime: meeting.endTime,
+        title: meeting.title
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in suggest-alternatives:', error);
+    res.status(500).json({ 
+      message: 'Lỗi khi tìm thời gian thay thế',
+      error: error.message 
+    });
+  }
+});
+
+/**
+ * @route   POST /api/meetings/check-availability
+ * @desc    Kiểm tra availability của attendees trong khoảng thời gian
+ * @access  Private
+ */
+router.post('/check-availability', authenticateToken, [
+  body('attendees').isArray({ min: 1 }).withMessage('Cần ít nhất 1 người tham dự'),
+  body('startTime').isISO8601().withMessage('Thời gian bắt đầu không hợp lệ'),
+  body('endTime').isISO8601().withMessage('Thời gian kết thúc không hợp lệ')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        message: 'Dữ liệu không hợp lệ', 
+        errors: errors.array() 
+      });
+    }
+
+    const { attendees, startTime, endTime } = req.body;
+
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+
+    const availability = {};
+
+    for (const userId of attendees) {
+      const conflicts = await Meeting.find({
+        $or: [
+          { organizer: userId },
+          { 'attendees.user': userId }
+        ],
+        status: { $in: ['scheduled', 'ongoing'] },
+        $or: [
+          { startTime: { $gte: start, $lt: end } },
+          { endTime: { $gt: start, $lte: end } },
+          { startTime: { $lte: start }, endTime: { $gte: end } }
+        ]
+      }).select('title startTime endTime');
+
+      availability[userId] = {
+        available: conflicts.length === 0,
+        conflicts: conflicts.map(m => ({
+          id: m._id,
+          title: m.title,
+          startTime: m.startTime,
+          endTime: m.endTime
+        }))
+      };
+    }
+
+    const availableCount = Object.values(availability).filter(a => a.available).length;
+    const allAvailable = availableCount === attendees.length;
+
+    res.json({
+      allAvailable,
+      availableCount,
+      totalCount: attendees.length,
+      availability
+    });
+
+  } catch (error) {
+    console.error('Error checking availability:', error);
+    res.status(500).json({ 
+      message: 'Lỗi khi kiểm tra availability',
+      error: error.message 
     });
   }
 });
